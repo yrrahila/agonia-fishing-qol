@@ -1,0 +1,72 @@
+# Local Codex workspace artifacts
+work/
+outputs/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+credentials*.json
+secrets*.json
+
+# Dependencies
+node_modules/
+vendor/
+.venv/
+venv/
+env/
+__pypackages__/
+
+# Generated files and build output
+dist/
+build/
+out/
+target/
+coverage/
+.coverage
+htmlcov/
+.next/
+.nuxt/
+.svelte-kit/
+.parcel-cache/
+.cache/
+*.egg-info/
+
+# Language and tool caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.gradle/
+
+# Local databases and logs
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.log
+logs/
+
+# IDE and operating-system files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
