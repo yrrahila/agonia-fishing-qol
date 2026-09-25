@@ -26,6 +26,33 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
+def generatedWaterResources = layout.buildDirectory.dir("generated/water-resources")
+def waterTextureSource = layout.projectDirectory.file(
+    "src/client/resources/agonia_fishing_qol/water_surface.png.b64"
+)
+
+def generateWaterTextures = tasks.register("generateWaterTextures") {
+    inputs.file waterTextureSource
+    outputs.dir generatedWaterResources
+
+    doLast {
+        byte[] textureBytes = java.util.Base64.decoder.decode(waterTextureSource.asFile.text.trim())
+        File textureDirectory = generatedWaterResources.get()
+            .dir("assets/minecraft/textures/block")
+            .asFile
+        textureDirectory.mkdirs()
+        new File(textureDirectory, "water_still.png").bytes = textureBytes
+        new File(textureDirectory, "water_flow.png").bytes = textureBytes
+    }
+}
+
+sourceSets.client.resources.srcDir generatedWaterResources
+
+tasks.named("processClientResources") {
+    dependsOn generateWaterTextures
+    exclude "agonia_fishing_qol/water_surface.png.b64"
+}
+
 processResources {
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
@@ -43,9 +70,12 @@ java {
     targetCompatibility = JavaVersion.VERSION_25
 }
 
+tasks.named("sourcesJar") {
+    dependsOn generateWaterTextures
+}
+
 jar {
     from("LICENSE") {
         rename { "${it}_${project.archives_base_name}" }
     }
 }
-

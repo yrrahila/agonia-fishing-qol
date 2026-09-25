@@ -83,7 +83,7 @@ public abstract class FishingHookRendererMixin {
         boolean approaching = extension.agoniaFishingQol$isApproaching();
         boolean biting = extension.agoniaFishingQol$isBiting();
         int phaseColor = biting ? BITE_COLOR : approaching ? APPROACHING_COLOR : WAITING_COLOR;
-        float bobberScale = biting ? 1.0F : 0.5F;
+        float bobberScale = biting ? 1.35F : 0.5F;
 
         poseStack.pushPose();
         poseStack.pushPose();

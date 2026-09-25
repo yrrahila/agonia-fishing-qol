@@ -1,9 +1,11 @@
 package io.github.yrrahila.agoniafishingqol.mixin.client;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleEngine;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.world.entity.projectile.FishingHook;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -27,6 +29,27 @@ public abstract class ParticleEngineMixin {
         CallbackInfoReturnable<Particle> cir
     ) {
         if (options.getType() == ParticleTypes.BUBBLE) {
+            cir.setReturnValue(null);
+            return;
+        }
+
+        if (options.getType() != ParticleTypes.SPLASH && options.getType() != ParticleTypes.UNDERWATER) {
+            return;
+        }
+
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null) {
+            return;
+        }
+        FishingHook ownHook = client.player.fishing;
+        if (ownHook == null || ownHook.isRemoved() || ownHook.getPlayerOwner() != client.player) {
+            return;
+        }
+
+        double dx = ownHook.getX() - x;
+        double dy = ownHook.getY() - y;
+        double dz = ownHook.getZ() - z;
+        if (dx * dx + dy * dy + dz * dz <= 2.25) {
             cir.setReturnValue(null);
         }
     }

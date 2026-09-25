@@ -33,7 +33,7 @@ public final class FishingTracker {
     private static final float APPROACH_SOUND_PITCH = 1.10F;
     private static final float APPROACH_SOUND_VOLUME = 1.55F;
     private static final float BITE_SOUND_PITCH = 0.78F;
-    private static final float BITE_SOUND_VOLUME = 1.90F;
+    private static final float BITE_SOUND_VOLUME = 1.60F;
 
     private FishingHook activeHook;
     private long biteCycleStartTick = -1L;
@@ -133,7 +133,7 @@ public final class FishingTracker {
             : approaching ? BobberStatus.FISH_APPROACHING : BobberStatus.WAITING;
         snapshot = new FishingSnapshot(
             status,
-            estimateBite(client, gameTime, inWater, biting),
+            approaching ? "Coming" : estimateBite(client, gameTime, inWater, biting),
             durability.remaining(),
             durability.maximum(),
             biting
@@ -419,10 +419,10 @@ public final class FishingTracker {
 
     private String estimateBite(Minecraft client, long gameTime, boolean inWater, boolean biting) {
         if (biting) {
-            return "Ready";
+            return "0-0s";
         }
         if (!inWater || biteCycleStartTick < 0L) {
-            return "Settling";
+            return "--";
         }
 
         int lureReduction = Math.max(0, lureLevelAtCast) * 100;
@@ -438,9 +438,6 @@ public final class FishingTracker {
         long elapsed = Math.max(0L, gameTime - biteCycleStartTick);
         double minSeconds = Math.max(0L, minimumTicks - elapsed) / 20.0;
         double maxSeconds = Math.max(0L, maximumTicks - elapsed) / 20.0;
-        if (maxSeconds <= 5.0) {
-            return "Soon";
-        }
         return String.format(Locale.ROOT, "%d-%ds", (int)Math.floor(minSeconds), (int)Math.ceil(maxSeconds));
     }
 
