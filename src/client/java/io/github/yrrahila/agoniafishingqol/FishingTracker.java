@@ -37,8 +37,6 @@ public final class FishingTracker {
     private static final float ANCHOR_BLEND_PER_TICK = 1.0F / 8.0F;
     private static final float APPROACH_SOUND_PITCH = 1.10F;
     private static final float APPROACH_SOUND_VOLUME = 1.55F;
-    private static final float BITE_SOUND_PITCH = 0.78F;
-    private static final float BITE_SOUND_VOLUME = 1.60F;
     private static final float TRAIL_SCALE = 2.25F;
     private static final float TRAIL_YELLOW_RED = 1.0F;
     private static final float TRAIL_YELLOW_GREEN = 1.0F;
@@ -60,7 +58,6 @@ public final class FishingTracker {
     private float anchorWeight;
     private @Nullable Vec3 visualAnchor;
     private @Nullable SimpleSoundInstance activeApproachSound;
-    private @Nullable SimpleSoundInstance activeBiteSound;
     private final List<SingleQuadParticle> activeTrailParticles = new ArrayList<>();
     private FishingSnapshot snapshot = FishingSnapshot.NOT_CAST;
 
@@ -123,12 +120,12 @@ public final class FishingTracker {
         if (biting) {
             stopApproachSound(client);
             approachingUntilTick = Long.MIN_VALUE;
-            if (!lastBiting) {
-                playBiteSound(client);
-            }
-        } else {
-            stopBiteSound(client);
         }
+        AgoniaFishingQolClient.biteSoundController().tickBite(
+            client,
+            biting,
+            AgoniaFishingQolClient.config().selectedPreset()
+        );
 
         updateAnchorWeight(!biting && visualAnchor != null);
         FishingVisualState.publish(
@@ -435,23 +432,6 @@ public final class FishingTracker {
         }
     }
 
-    private void playBiteSound(Minecraft client) {
-        stopBiteSound(client);
-        activeBiteSound = SimpleSoundInstance.forUI(
-            SoundEvents.UI_TOAST_CHALLENGE_COMPLETE,
-            BITE_SOUND_PITCH,
-            BITE_SOUND_VOLUME
-        );
-        client.getSoundManager().play(activeBiteSound);
-    }
-
-    private void stopBiteSound(Minecraft client) {
-        if (activeBiteSound != null) {
-            client.getSoundManager().stop(activeBiteSound);
-            activeBiteSound = null;
-        }
-    }
-
     private void warnForLowDurability(Minecraft client, ItemStack rod) {
         if (rod.isEmpty() || !rod.isDamageableItem()) {
             durabilityWarningShown = false;
@@ -564,7 +544,7 @@ public final class FishingTracker {
     private void clearFishingState(Minecraft client) {
         clearPreviousHighlight();
         stopApproachSound(client);
-        stopBiteSound(client);
+        AgoniaFishingQolClient.biteSoundController().stopBite(client);
         removeActiveTrail();
         FishingVisualState.clear();
         activeHook = null;

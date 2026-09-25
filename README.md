@@ -28,9 +28,10 @@ The distributable JAR is written to `build/libs/`.
 
 ## Included QoL features
 
+- A small vanilla-style Bite sound screen opened with the rebindable `F8` key, with six persistent built-in alert presets and a short preview.
 - One action-bar warning when a held fishing rod reaches 10 durability or less.
 - A large yellow `INCOMING...` alert and short note-block sound when the local hook's real server-sent fish trail begins.
-- A larger green `BITE!` alert, a 35% larger bite-state bobber, and a lower-pitched challenge-complete sound played once when the bite becomes ready.
+- A larger green `BITE!` alert, a 35% larger bite-state bobber, and the selected alert preset repeated at a controlled interval for the full bite-ready phase.
 - A compact middle-right HUD, visible only while holding a fishing rod, with a bold `Agonia Fishing QoL` title and separate `Cast`, `Estimated`, and `Durability` rows.
 - A static numerical bite-time range based on vanilla's random wait bounds, Lure, rain, and sky exposure. It changes to `Incoming` only for the verified approach trail and `Ready` only for the synchronized bite state.
 - A client-only glow and matching solid red (waiting), yellow (approaching), or green (bite-ready) bobber and clearly thicker line.
