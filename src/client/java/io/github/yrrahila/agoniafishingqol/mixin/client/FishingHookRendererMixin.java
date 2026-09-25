@@ -2,6 +2,7 @@ package io.github.yrrahila.agoniafishingqol.mixin.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import io.github.yrrahila.agoniafishingqol.FirstPersonRodVisuals;
 import io.github.yrrahila.agoniafishingqol.FishingHookRenderStateAccess;
 import io.github.yrrahila.agoniafishingqol.FishingVisualState;
 import net.minecraft.client.Minecraft;
@@ -48,6 +49,15 @@ public abstract class FishingHookRendererMixin {
         extension.agoniaFishingQol$setTrailPositions(
             ownHook ? FishingVisualState.interpolatedTrailPositions(partialTicks) : java.util.List.of()
         );
+
+        Minecraft client = Minecraft.getInstance();
+        Vec3 firstPersonRodTip = ownHook && client.options.getCameraType().isFirstPerson()
+            ? FirstPersonRodVisuals.currentWorldTip()
+            : null;
+        if (firstPersonRodTip != null) {
+            Vec3 actualHookPosition = entity.getPosition(partialTicks).add(0.0, 0.25, 0.0);
+            state.lineOriginOffset = firstPersonRodTip.subtract(actualHookPosition);
+        }
 
         Vec3 anchor = ownHook ? FishingVisualState.anchor() : null;
         float anchorWeight = anchor == null ? 0.0F : FishingVisualState.interpolatedAnchorWeight(partialTicks);
