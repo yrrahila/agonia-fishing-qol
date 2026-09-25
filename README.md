@@ -1,51 +1,45 @@
 # Agonia Fishing QoL
 
-A strictly client-side Fabric mod for Minecraft 26.2 that makes manual fishing easier to read without automating any action.
+A client-side Fabric mod that makes manual fishing clearer and easier to follow on Agonia SMP.
 
-Author: Yxad
+## Features
 
-## Principles
+- **Fishing states** — Red while waiting, yellow while a fish approaches, and green when a bite is ready.
+- **Bite alerts** — Large visual feedback and a repeating, selectable notification sound.
+- **Estimated timing** — Shows an honest bite-time range adjusted for Lure, rain, and sky exposure.
+- **Compact HUD** — Displays cast time, estimated bite time, and fishing-rod durability.
+- **Durability warning** — Warns when the held fishing rod is close to breaking.
+- **Local bobber visuals** — Adds a clearer 3D bobber for your own cast without changing other players' bobbers.
+- **Improved fishing line** — Uses a thicker, color-coded line aligned with the first-person rod tip.
+- **Approach trail** — Replaces your own fishing wake with a smooth yellow or green trail.
+- **Clear water** — Makes the bobber and fishing activity easier to see below the surface.
+- **Sound settings** — Includes 21 vanilla sound presets and a 0–200% alert-volume slider.
+- **Master switch** — Disables every mod effect and restores normal client rendering at runtime.
+- **Multiplayer-safe** — Requires no server mod, sends no custom packets, and tracks only your own bobber.
+- **No automation** — Casting, reeling, movement, inventory actions, and rod switching remain completely manual.
 
-- Every cast, reel, item switch, movement, and interaction remains manual.
-- The mod sends no custom packets and requires nothing on the server.
-- All indicators are limited to the local player's own fishing hook.
-- Bite timing is labelled as an estimate because the server's random countdown is not exposed to clients.
+## Compatibility
 
-## Requirements
+- Minecraft `26.2`
+- Fabric Loader `0.19.3` or newer
+- Fabric API `0.156.0+26.2` or newer compatible 26.2 build
+- Java `25`
+- Mod Menu `20.0.3` is optional and provides access to settings
 
-- Minecraft Java Edition 26.2
-- Fabric Loader 0.19.3 or newer
-- Fabric API 0.156.0+26.2 or newer compatible 26.2 build
-- Java 25
-- Mod Menu 20.0.3 is optional and provides access to the Bite sound settings screen.
+## Download
 
-## Build
+Players should download the `.jar` file from the repository's [Releases page](https://github.com/yrrahila/agonia-fishing-qol/releases) and place it in the Modrinth instance's `mods` folder.
+
+Do not use **Code → Download ZIP** to install the mod. That ZIP is GitHub's automatic source-code archive for developers, so it correctly contains Gradle files, source code, and build scripts.
+
+## Build from source
 
 ```shell
 ./gradlew build
 ```
 
-The distributable JAR is written to `build/libs/`.
+The compiled mod is written to `build/libs/`.
 
-## Included QoL features
+## License
 
-- An optional Mod Menu integration that opens a compact vanilla-style settings screen with a persistent master switch, 21 built-in Bite alert presets, a 0-200% alert-volume slider, and repeating previews.
-- Turning the master switch off immediately clears local fishing state and audio, restores vanilla bobber/line/rod/particle rendering, hides the HUD, and removes the bundled clear-water resource pack until the mod is enabled again.
-- One action-bar warning when a held fishing rod reaches 10 durability or less.
-- A large yellow `INCOMING...` alert and short note-block sound when the local hook's real server-sent fish trail begins.
-- A larger green `BITE!` alert, a subtly enlarged normal bobber, a clearly larger bite-state bobber, and the selected alert preset repeated at a controlled interval for the full bite-ready phase.
-- A compact middle-right HUD, visible only while holding a fishing rod, with a bold `Agonia Fishing QoL` title and separate `Cast`, `Estimated`, and `Durability` rows.
-- A static numerical bite-time range based on vanilla's random wait bounds, Lure, rain, and sky exposure. It changes to `Incoming` only for the verified approach trail and `Ready` only for the synchronized bite state.
-- A client-only glow and matching solid red (waiting), yellow (approaching), or green (bite-ready) bobber and clearly thicker line.
-- An item-only first-person transform renders fishing rods at 82% scale in either hand without changing GUI item models.
-- A render-only stable waiting anchor that blends in and out over four ticks, including between-frame interpolation, while fishing logic continues to use the real entity position.
-- Vanilla fishing wakes are hidden client-side and replaced only for the verified local-player hook with a full-bright yellow trail. The first confidently matched wake latches Incoming until bite or a genuine cycle invalidation, so intermittent vanilla particle gaps cannot switch the presentation back to Waiting.
-- Trail motion is interpolated between ticks and rendered as short continuous spans instead of disconnected points. Every still-visible span is recolored full-bright green as soon as the bite state begins.
-- All ordinary `BUBBLE` particles are hidden client-side, and local `SPLASH`, `UNDERWATER`, and `BUBBLE_POP` particles within four blocks of the player's bobber are removed. Bubble-column mechanics and other distinct world particles are unchanged.
-- Uniform, transparent still/flow water textures use alpha 32 to preserve the smooth clear-water replacement while keeping underwater bobber colors highly visible, without shader, framebuffer, fog, physics, movement, or server-state changes.
-
-## Multiplayer safety
-
-The tracker reads only `LocalPlayer.fishing` and also verifies that the hook's owner is the local player. Bite state comes directly from that synchronized hook. Approach particles are accepted only when their exact vanilla fishing-trail packet signature is closest to that hook; ambiguous overlapping trails are ignored. The mod contains no casting, reeling, inventory, movement, interaction, or packet-sending code.
-
-The exact server-side random fishing countdown and the server's internal approaching-fish phase are not synchronized to clients. For that reason, the HUD reports a range rather than a guaranteed countdown and does not claim to identify the approaching phase. Modified server fishing mechanics may make the estimate less accurate.
+MIT
