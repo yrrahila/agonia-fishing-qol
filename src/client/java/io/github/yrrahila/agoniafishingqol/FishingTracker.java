@@ -6,6 +6,7 @@ import java.util.Locale;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.Particle;
+import net.minecraft.client.particle.SingleQuadParticle;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
@@ -34,6 +35,13 @@ public final class FishingTracker {
     private static final float APPROACH_SOUND_VOLUME = 1.55F;
     private static final float BITE_SOUND_PITCH = 0.78F;
     private static final float BITE_SOUND_VOLUME = 1.60F;
+    private static final float TRAIL_SCALE = 2.25F;
+    private static final float TRAIL_YELLOW_RED = 1.0F;
+    private static final float TRAIL_YELLOW_GREEN = 0.82F;
+    private static final float TRAIL_YELLOW_BLUE = 0.08F;
+    private static final float TRAIL_GREEN_RED = 0.20F;
+    private static final float TRAIL_GREEN_GREEN = 1.0F;
+    private static final float TRAIL_GREEN_BLUE = 0.24F;
 
     private FishingHook activeHook;
     private long cycleStartTick = -1L;
@@ -81,6 +89,8 @@ public final class FishingTracker {
 
         if (lastBiting && !biting) {
             resetVisualAnchor();
+            cycleStartTick = gameTime;
+            lureLevelAtCast = readLureLevel(client, heldRod);
         }
         if (inWater) {
             if (!biting) {
@@ -111,9 +121,6 @@ public final class FishingTracker {
             }
         } else {
             stopBiteSound(client);
-            if (lastBiting) {
-                cycleStartTick = gameTime;
-            }
         }
 
         updateAnchorWeight(!biting && visualAnchor != null);
@@ -153,12 +160,15 @@ public final class FishingTracker {
 
         if (isApproachTrailPacket(packet) && approachTrailBelongsToOwnHook(client, ownHook, packet)) {
             approachingUntilTick = client.level.getGameTime() + APPROACH_STATE_GRACE_TICKS;
-            enhanceApproachTrail(client, packet);
-            return false;
+            renderColoredApproachTrail(client, packet);
+            return true;
         }
 
         if (isCloseBiteFishingPacket(packet)) {
-            return closeFishingEffectBelongsToOwnHook(client, ownHook, packet);
+            if (closeFishingEffectBelongsToOwnHook(client, ownHook, packet)) {
+                renderColoredBiteEffect(client, packet);
+                return true;
+            }
         }
 
         return isIdleFishingSplash(packet) && idleSplashBelongsToOwnHook(client, ownHook, packet);
@@ -307,11 +317,12 @@ public final class FishingTracker {
         return Mth.square(hook.getX() - x) + Mth.square(hook.getZ() - z);
     }
 
-    private void enhanceApproachTrail(Minecraft client, ClientboundLevelParticlesPacket packet) {
+    private void renderColoredApproachTrail(Minecraft client, ClientboundLevelParticlesPacket packet) {
         double xa = packet.getMaxSpeed() * packet.getXDist();
         double ya = packet.getMaxSpeed() * packet.getYDist();
         double za = packet.getMaxSpeed() * packet.getZDist();
         double[][] offsets = {
+            {0.0, 0.0, 0.0},
             {0.035, 0.0, 0.0},
             {-0.035, 0.0, 0.0},
             {0.0, 0.015, 0.035},
@@ -319,18 +330,51 @@ public final class FishingTracker {
         };
 
         for (double[] offset : offsets) {
-            Particle particle = client.particleEngine.createParticle(
-                ParticleTypes.FISHING,
-                packet.getX() + offset[0],
-                packet.getY() + offset[1],
-                packet.getZ() + offset[2],
-                xa,
-                ya,
-                za
+            createColoredFishingParticle(
+                client,
+                packet.getX() + offset[0], packet.getY() + offset[1], packet.getZ() + offset[2],
+                xa, ya, za,
+                TRAIL_YELLOW_RED, TRAIL_YELLOW_GREEN, TRAIL_YELLOW_BLUE
             );
-            if (particle != null) {
-                particle.scale(2.25F);
-            }
+        }
+    }
+
+    private void renderColoredBiteEffect(Minecraft client, ClientboundLevelParticlesPacket packet) {
+        int count = Math.min(Math.max(packet.getCount(), 4), 12);
+        for (int i = 0; i < count; i++) {
+            double angle = Math.PI * 2.0 * i / count;
+            double radius = 0.08 + 0.02 * (i % 3);
+            createColoredFishingParticle(
+                client,
+                packet.getX() + Math.cos(angle) * radius,
+                packet.getY() + 0.02 * (i % 2),
+                packet.getZ() + Math.sin(angle) * radius,
+                Math.cos(angle) * 0.02,
+                0.015,
+                Math.sin(angle) * 0.02,
+                TRAIL_GREEN_RED, TRAIL_GREEN_GREEN, TRAIL_GREEN_BLUE
+            );
+        }
+    }
+
+    private void createColoredFishingParticle(
+        Minecraft client,
+        double x,
+        double y,
+        double z,
+        double xa,
+        double ya,
+        double za,
+        float red,
+        float green,
+        float blue
+    ) {
+        Particle particle = client.particleEngine.createParticle(ParticleTypes.FISHING, x, y, z, xa, ya, za);
+        if (particle instanceof SingleQuadParticle quadParticle) {
+            quadParticle.setColor(red, green, blue);
+        }
+        if (particle != null) {
+            particle.scale(TRAIL_SCALE);
         }
     }
 
@@ -424,15 +468,31 @@ public final class FishingTracker {
         int minimumTicks = Math.max(0, 100 - lureReduction) + 20;
         int maximumTicks = Math.max(0, 600 - lureReduction) + 80;
 
-        boolean rainBoost = client.level.isRainingAt(activeHook.blockPosition().above());
-        boolean skyVisible = client.level.canSeeSky(activeHook.blockPosition().above());
+        var surfacePosition = activeHook.blockPosition();
+        for (int depth = 0; depth < 8 && client.level.getFluidState(surfacePosition).is(FluidTags.WATER); depth++) {
+            surfacePosition = surfacePosition.above();
+        }
+
+        boolean rainBoost = client.level.isRainingAt(surfacePosition);
+        boolean skyVisible = client.level.canSeeSky(surfacePosition);
         double expectedTickRate = 1.0 + (rainBoost ? 0.25 : 0.0) - (skyVisible ? 0.0 : 0.5);
         minimumTicks = (int)Math.ceil(minimumTicks / expectedTickRate);
         maximumTicks = (int)Math.ceil(maximumTicks / expectedTickRate);
 
         double minSeconds = minimumTicks / 20.0;
         double maxSeconds = maximumTicks / 20.0;
-        return String.format(Locale.ROOT, "%d-%ds", (int)Math.floor(minSeconds), (int)Math.ceil(maxSeconds));
+        int minimumDisplaySeconds = (int)Math.floor(minSeconds);
+        if (lureLevelAtCast >= 3) {
+            minimumDisplaySeconds = rainBoost ? 1 : 0;
+        } else if (rainBoost) {
+            minimumDisplaySeconds = Math.max(1, minimumDisplaySeconds);
+        }
+        return String.format(
+            Locale.ROOT,
+            "%d-%ds",
+            minimumDisplaySeconds,
+            (int)Math.ceil(maxSeconds)
+        );
     }
 
     private String elapsedCycleTime(long gameTime) {

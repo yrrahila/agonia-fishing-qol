@@ -33,7 +33,9 @@ public abstract class ParticleEngineMixin {
             return;
         }
 
-        if (options.getType() != ParticleTypes.SPLASH && options.getType() != ParticleTypes.UNDERWATER) {
+        if (options.getType() != ParticleTypes.SPLASH
+            && options.getType() != ParticleTypes.UNDERWATER
+            && options.getType() != ParticleTypes.BUBBLE_POP) {
             return;
         }
 
@@ -49,7 +51,7 @@ public abstract class ParticleEngineMixin {
         double dx = ownHook.getX() - x;
         double dy = ownHook.getY() - y;
         double dz = ownHook.getZ() - z;
-        if (dx * dx + dy * dy + dz * dz <= 2.25) {
+        if (dx * dx + dy * dy + dz * dz <= 16.0) {
             cir.setReturnValue(null);
         }
     }

@@ -25,7 +25,8 @@ public final class FishingHud {
         Minecraft client = Minecraft.getInstance();
         Font font = client.font;
         List<Line> lines = new ArrayList<>();
-        lines.add(new Line(snapshot.elapsedTime() + "    Estimated: " + snapshot.estimatedBite(), TEXT));
+        lines.add(new Line("Cast: " + snapshot.elapsedTime(), TEXT));
+        lines.add(new Line("Estimated: " + snapshot.estimatedBite(), TEXT));
         lines.add(new Line("Durability: " + snapshot.rodDurability() + " / " + snapshot.rodMaxDurability(), TEXT));
 
         int width = lines.stream().mapToInt(line -> font.width(line.text())).max().orElse(0);
