@@ -27,11 +27,11 @@ The distributable JAR is written to `build/libs/`.
 ## Included QoL features
 
 - One action-bar warning when a held fishing rod reaches 10 durability or less.
-- A built-in pling sound and `BITE!` HUD notification for a confirmed bite.
+- A moderately prominent built-in experience-orb pickup sound and enlarged green `BITE!` HUD notification for a confirmed bite.
 - A compact status HUD showing `Not Cast`, `Waiting`, or `Bite Ready`.
 - A deliberately labelled estimated bite-time range based on vanilla's random wait bounds, Lure, rain, and sky exposure.
-- A client-only glow and one subtle particle at the local player's bobber every 16 ticks.
-- Vanilla-compatible open-water evaluation over the same 5×5×4 area, with a short failure explanation.
+- A client-only glow that makes the local player's bobber easier to identify without adding particles.
+- Vanilla-compatible open-water evaluation over the same 5×5×4 area, shown as a simple pass/fail result.
 
 ## Multiplayer safety
 

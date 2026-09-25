@@ -13,6 +13,7 @@ public final class FishingHud {
     private static final int GOOD = 0xFF55FF55;
     private static final int BAD = 0xFFFF7777;
     private static final int READY = 0xFFFFD34E;
+    private static final float BITE_SCALE = 1.65F;
 
     private FishingHud() {
     }
@@ -30,7 +31,7 @@ public final class FishingHud {
                 if (snapshot.openWater().open()) {
                     lines.add(new Line("Open Water ✓", GOOD));
                 } else {
-                    lines.add(new Line("Not Open Water ✗: " + snapshot.openWater().reason(), BAD));
+                    lines.add(new Line("Not Open Water ✗", BAD));
                 }
             }
         }
@@ -47,8 +48,12 @@ public final class FishingHud {
 
         if (snapshot.biteReady()) {
             String bite = "BITE!";
-            int centerX = graphics.guiWidth() / 2;
-            graphics.centeredText(font, bite, centerX, graphics.guiHeight() / 2 - 42, READY);
+            int centerX = Math.round((graphics.guiWidth() / 2.0F) / BITE_SCALE);
+            int biteY = Math.round((graphics.guiHeight() / 2.0F - 42.0F) / BITE_SCALE);
+            graphics.pose().pushMatrix();
+            graphics.pose().scale(BITE_SCALE, BITE_SCALE);
+            graphics.centeredText(font, bite, centerX, biteY, GOOD);
+            graphics.pose().popMatrix();
         }
     }
 

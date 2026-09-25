@@ -8,7 +8,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 
-/** Mirrors FishingHook's vanilla 5x5x4 open-water scan and adds a concise failure reason. */
+/** Mirrors FishingHook's vanilla 5x5x4 open-water scan. */
 public final class OpenWaterEvaluator {
     private OpenWaterEvaluator() {
     }
@@ -19,47 +19,39 @@ public final class OpenWaterEvaluator {
         LayerType previous = LayerType.INVALID;
 
         for (int y = -1; y <= 2; y++) {
-            LayerResult layer = classifyLayer(level, center, y);
-            if (layer.type() == LayerType.INVALID) {
-                return new Result(false, reasonForInvalidLayer(layer, y), true);
+            LayerType layer = classifyLayer(level, center, y);
+            if (layer == LayerType.INVALID) {
+                return new Result(false, true);
             }
-            if (layer.type() == LayerType.ABOVE_WATER && previous == LayerType.INVALID) {
-                return new Result(false, "insufficient water area", true);
+            if (layer == LayerType.ABOVE_WATER && previous == LayerType.INVALID) {
+                return new Result(false, true);
             }
-            if (layer.type() == LayerType.INSIDE_WATER && previous == LayerType.ABOVE_WATER) {
-                return new Result(false, "water above air gap", true);
+            if (layer == LayerType.INSIDE_WATER && previous == LayerType.ABOVE_WATER) {
+                return new Result(false, true);
             }
-            previous = layer.type();
+            previous = layer;
         }
 
-        return new Result(true, "", true);
+        return new Result(true, true);
     }
 
-    private static LayerResult classifyLayer(Level level, BlockPos center, int yOffset) {
+    private static LayerType classifyLayer(Level level, BlockPos center, int yOffset) {
         LayerType uniform = null;
-        boolean solidAbove = false;
-        boolean missingWater = false;
 
         for (int x = -2; x <= 2; x++) {
             for (int z = -2; z <= 2; z++) {
                 BlockPos pos = center.offset(x, yOffset, z);
                 BlockState state = level.getBlockState(pos);
                 LayerType type = classifyBlock(level, pos, state);
-                if (yOffset >= 1 && type == LayerType.INVALID) {
-                    solidAbove = true;
-                }
-                if (yOffset <= 0 && type != LayerType.INSIDE_WATER) {
-                    missingWater = true;
-                }
                 if (uniform == null) {
                     uniform = type;
                 } else if (uniform != type) {
-                    return new LayerResult(LayerType.INVALID, solidAbove, missingWater);
+                    return LayerType.INVALID;
                 }
             }
         }
 
-        return new LayerResult(uniform == null ? LayerType.INVALID : uniform, solidAbove, missingWater);
+        return uniform == null ? LayerType.INVALID : uniform;
     }
 
     private static LayerType classifyBlock(Level level, BlockPos pos, BlockState state) {
@@ -74,31 +66,15 @@ public final class OpenWaterEvaluator {
         return LayerType.INVALID;
     }
 
-    private static String reasonForInvalidLayer(LayerResult layer, int yOffset) {
-        if (layer.solidAbove()) {
-            return "block above bobber";
-        }
-        if (layer.missingWater() || yOffset <= 0) {
-            return "insufficient source-water area";
-        }
-        if (yOffset >= 1) {
-            return "invalid blocks above bobber";
-        }
-        return "invalid blocks nearby";
-    }
-
     private enum LayerType {
         ABOVE_WATER,
         INSIDE_WATER,
         INVALID
     }
 
-    private record LayerResult(LayerType type, boolean solidAbove, boolean missingWater) {
-    }
-
-    public record Result(boolean open, String reason, boolean known) {
+    public record Result(boolean open, boolean known) {
         public static Result unknown() {
-            return new Result(false, "", false);
+            return new Result(false, false);
         }
     }
 }

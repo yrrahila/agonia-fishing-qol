@@ -7,7 +7,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.Holder;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -22,7 +21,6 @@ import net.minecraft.world.item.enchantment.Enchantments;
 public final class FishingTracker {
     private static final int LOW_DURABILITY_THRESHOLD = 10;
     private static final int OPEN_WATER_REFRESH_TICKS = 10;
-    private static final int MARKER_PARTICLE_INTERVAL_TICKS = 16;
 
     private FishingHook activeHook;
     private long waterEntryTick = -1L;
@@ -71,7 +69,7 @@ public final class FishingTracker {
 
         boolean biting = ((FishingHookAccessor) activeHook).agoniaFishingQol$isBiting();
         if (biting && !lastBiting) {
-            client.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_PLING.value(), 1.6F, 0.7F));
+            client.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.15F, 1.0F));
         } else if (!biting && lastBiting) {
             // A missed bite starts a fresh, server-randomized waiting cycle.
             waterEntryTick = inWater ? gameTime : -1L;
@@ -80,9 +78,6 @@ public final class FishingTracker {
 
         if (gameTime % OPEN_WATER_REFRESH_TICKS == 0L) {
             openWater = OpenWaterEvaluator.evaluate(activeHook);
-        }
-        if (gameTime % MARKER_PARTICLE_INTERVAL_TICKS == 0L) {
-            spawnMarkerParticle(client);
         }
 
         BobberStatus status = biting ? BobberStatus.BITE_READY : BobberStatus.WAITING;
@@ -163,20 +158,6 @@ public final class FishingTracker {
         int maxDisplay = (int) Math.ceil(maxSeconds);
         String suffix = rainBoost ? " (rain estimate)" : " (estimate)";
         return String.format(Locale.ROOT, "Estimated bite: %d-%ds%s", minDisplay, maxDisplay, suffix);
-    }
-
-    private void spawnMarkerParticle(Minecraft client) {
-        double angle = (client.level.getGameTime() % 80L) * (Math.PI / 40.0);
-        double radius = 0.22;
-        client.level.addParticle(
-            ParticleTypes.END_ROD,
-            activeHook.getX() + Math.cos(angle) * radius,
-            activeHook.getY() + 0.22,
-            activeHook.getZ() + Math.sin(angle) * radius,
-            0.0,
-            0.005,
-            0.0
-        );
     }
 
     private void clearPreviousHighlight() {
