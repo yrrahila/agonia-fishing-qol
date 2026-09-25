@@ -2,6 +2,7 @@ package io.github.yrrahila.agoniafishingqol.mixin.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import io.github.yrrahila.agoniafishingqol.AgoniaFishingQolClient;
 import io.github.yrrahila.agoniafishingqol.FirstPersonRodVisuals;
 import io.github.yrrahila.agoniafishingqol.FishingHookRenderStateAccess;
 import io.github.yrrahila.agoniafishingqol.FishingVisualState;
@@ -43,6 +44,14 @@ public abstract class FishingHookRendererMixin {
         CallbackInfo ci
     ) {
         FishingHookRenderStateAccess extension = (FishingHookRenderStateAccess)state;
+        if (!AgoniaFishingQolClient.isEnabled()) {
+            extension.agoniaFishingQol$setOwnHook(false);
+            extension.agoniaFishingQol$setApproaching(false);
+            extension.agoniaFishingQol$setBiting(false);
+            extension.agoniaFishingQol$setTrailPositions(java.util.List.of());
+            return;
+        }
+
         boolean ownHook = FishingVisualState.isOwnHook(entity);
         boolean approaching = ownHook && FishingVisualState.isApproaching();
         boolean biting = ownHook && FishingVisualState.isBiting();
@@ -95,7 +104,7 @@ public abstract class FishingHookRendererMixin {
         CallbackInfo ci
     ) {
         FishingHookRenderStateAccess extension = (FishingHookRenderStateAccess)state;
-        if (!extension.agoniaFishingQol$isOwnHook()) {
+        if (!AgoniaFishingQolClient.isEnabled() || !extension.agoniaFishingQol$isOwnHook()) {
             return;
         }
 

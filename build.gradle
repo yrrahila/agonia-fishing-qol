@@ -46,7 +46,7 @@ def generateWaterTextures = tasks.register("generateWaterTextures") {
     doLast {
         byte[] textureBytes = java.util.Base64.decoder.decode(waterTextureSource.asFile.text.trim())
         File textureDirectory = generatedWaterResources.get()
-            .dir("assets/minecraft/textures/block")
+            .dir("resourcepacks/clear_water/assets/minecraft/textures/block")
             .asFile
         textureDirectory.mkdirs()
         new File(textureDirectory, "water_still.png").bytes = textureBytes
@@ -54,14 +54,14 @@ def generateWaterTextures = tasks.register("generateWaterTextures") {
     }
 }
 
-sourceSets.client.resources.srcDir generatedWaterResources
+sourceSets.main.resources.srcDir generatedWaterResources
 
 tasks.named("processClientResources") {
-    dependsOn generateWaterTextures
     exclude "agonia_fishing_qol/water_surface.png.b64"
 }
 
 processResources {
+    dependsOn generateWaterTextures
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
         expand "version": project.version

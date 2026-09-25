@@ -56,6 +56,13 @@ public final class FishingTracker {
     private FishingSnapshot snapshot = FishingSnapshot.NOT_CAST;
 
     public void tick(Minecraft client) {
+        if (!AgoniaFishingQolClient.isEnabled()) {
+            if (snapshot != FishingSnapshot.NOT_CAST || activeHook != null || !activeTrailSegments.isEmpty()) {
+                reset(client);
+            }
+            return;
+        }
+
         if (client.player == null || client.level == null) {
             reset(client);
             return;
@@ -119,7 +126,8 @@ public final class FishingTracker {
         AgoniaFishingQolClient.biteSoundController().tickBite(
             client,
             biting,
-            AgoniaFishingQolClient.config().selectedPreset()
+            AgoniaFishingQolClient.config().selectedPreset(),
+            AgoniaFishingQolClient.config().alertVolume()
         );
 
         updateAnchorWeight(!biting && visualAnchor != null);
@@ -149,6 +157,10 @@ public final class FishingTracker {
 
     /** Cancels vanilla fishing wakes and recreates only those safely attributable to the local hook. */
     public boolean handleParticlePacket(Minecraft client, ClientboundLevelParticlesPacket packet) {
+        if (!AgoniaFishingQolClient.isEnabled()) {
+            return false;
+        }
+
         if (isApproachTrailPacket(packet)) {
             if (client.player != null && client.level != null) {
                 FishingHook ownHook = client.player.fishing;
@@ -191,6 +203,10 @@ public final class FishingTracker {
 
     public FishingSnapshot snapshot() {
         return snapshot;
+    }
+
+    public void resetRuntimeState(Minecraft client) {
+        reset(client);
     }
 
     private boolean isApproachTrailPacket(ClientboundLevelParticlesPacket packet) {

@@ -1,5 +1,6 @@
 package io.github.yrrahila.agoniafishingqol.mixin.client;
 
+import io.github.yrrahila.agoniafishingqol.AgoniaFishingQolClient;
 import io.github.yrrahila.agoniafishingqol.FishingVisualState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.Particle;
@@ -33,6 +34,10 @@ public abstract class ParticleEngineMixin {
         double zSpeed,
         CallbackInfoReturnable<Particle> cir
     ) {
+        if (!AgoniaFishingQolClient.isEnabled()) {
+            return;
+        }
+
         if (options.getType() == ParticleTypes.BUBBLE) {
             cir.setReturnValue(null);
             return;

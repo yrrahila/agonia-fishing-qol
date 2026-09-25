@@ -14,6 +14,10 @@ public abstract class ClientPacketListenerMixin {
     @Inject(method = "handleParticleEvent", at = @At("HEAD"), cancellable = true)
     private void agoniaFishingQol$observeFishingParticles(ClientboundLevelParticlesPacket packet, CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
+        if (!AgoniaFishingQolClient.isEnabled()) {
+            return;
+        }
+
         // This injection runs before vanilla's packet-thread handoff. Let vanilla schedule the
         // packet first, then inspect/cancel it when handleParticleEvent runs on the client thread.
         if (!client.isSameThread()) {

@@ -29,7 +29,8 @@ The distributable JAR is written to `build/libs/`.
 
 ## Included QoL features
 
-- An optional Mod Menu integration that opens a small vanilla-style Bite sound screen with six persistent built-in alert presets and a short preview.
+- An optional Mod Menu integration that opens a compact vanilla-style settings screen with a persistent master switch, 21 built-in Bite alert presets, a 0-200% alert-volume slider, and repeating previews.
+- Turning the master switch off immediately clears local fishing state and audio, restores vanilla bobber/line/rod/particle rendering, hides the HUD, and removes the bundled clear-water resource pack until the mod is enabled again.
 - One action-bar warning when a held fishing rod reaches 10 durability or less.
 - A large yellow `INCOMING...` alert and short note-block sound when the local hook's real server-sent fish trail begins.
 - A larger green `BITE!` alert, a subtly enlarged normal bobber, a clearly larger bite-state bobber, and the selected alert preset repeated at a controlled interval for the full bite-ready phase.

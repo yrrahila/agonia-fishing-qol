@@ -1,6 +1,7 @@
 package io.github.yrrahila.agoniafishingqol.mixin.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import io.github.yrrahila.agoniafishingqol.AgoniaFishingQolClient;
 import io.github.yrrahila.agoniafishingqol.FirstPersonRodVisuals;
 import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -49,7 +50,8 @@ public abstract class ItemInHandRendererMixin {
         ItemStack itemStack,
         ItemDisplayContext displayContext
     ) {
-        return itemStack.is(Items.FISHING_ROD)
+        return AgoniaFishingQolClient.isEnabled()
+            && itemStack.is(Items.FISHING_ROD)
             && (displayContext == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
                 || displayContext == ItemDisplayContext.FIRST_PERSON_LEFT_HAND);
     }

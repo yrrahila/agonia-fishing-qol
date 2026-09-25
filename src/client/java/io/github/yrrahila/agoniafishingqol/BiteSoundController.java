@@ -5,17 +5,23 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import org.jspecify.annotations.Nullable;
 
 public final class BiteSoundController {
-    private static final int PREVIEW_DURATION_TICKS = 50;
+    private static final int PREVIEW_DURATION_TICKS = 70;
 
     private boolean biteActive;
     private int biteCooldownTicks;
     private int previewRemainingTicks;
     private int previewCooldownTicks;
     private @Nullable BiteSoundPreset previewPreset;
+    private double previewVolumeMultiplier = BiteSoundConfig.DEFAULT_ALERT_VOLUME;
     private @Nullable SimpleSoundInstance activeBiteSound;
     private @Nullable SimpleSoundInstance activePreviewSound;
 
-    public void tickBite(Minecraft client, boolean biting, BiteSoundPreset preset) {
+    public void tickBite(
+        Minecraft client,
+        boolean biting,
+        BiteSoundPreset preset,
+        double volumeMultiplier
+    ) {
         if (!biting) {
             stopBite(client);
             return;
@@ -28,21 +34,22 @@ public final class BiteSoundController {
         }
 
         if (biteCooldownTicks <= 0) {
-            activeBiteSound = replaceSound(client, activeBiteSound, preset);
+            activeBiteSound = replaceSound(client, activeBiteSound, preset, volumeMultiplier);
             biteCooldownTicks = preset.repeatIntervalTicks();
         } else {
             biteCooldownTicks--;
         }
     }
 
-    public void startPreview(Minecraft client, BiteSoundPreset preset) {
-        if (biteActive) {
+    public void startPreview(Minecraft client, BiteSoundPreset preset, double volumeMultiplier) {
+        if (biteActive || !AgoniaFishingQolClient.isEnabled()) {
             return;
         }
         stopPreview(client);
         previewPreset = preset;
+        previewVolumeMultiplier = BiteSoundConfig.sanitizeForPlayback(volumeMultiplier);
         previewRemainingTicks = PREVIEW_DURATION_TICKS;
-        activePreviewSound = replaceSound(client, null, preset);
+        activePreviewSound = replaceSound(client, null, preset, previewVolumeMultiplier);
         previewCooldownTicks = preset.repeatIntervalTicks();
     }
 
@@ -54,7 +61,12 @@ public final class BiteSoundController {
 
         previewRemainingTicks--;
         if (previewCooldownTicks <= 0) {
-            activePreviewSound = replaceSound(client, activePreviewSound, previewPreset);
+            activePreviewSound = replaceSound(
+                client,
+                activePreviewSound,
+                previewPreset,
+                previewVolumeMultiplier
+            );
             previewCooldownTicks = previewPreset.repeatIntervalTicks();
         } else {
             previewCooldownTicks--;
@@ -80,19 +92,31 @@ public final class BiteSoundController {
             activePreviewSound = null;
         }
         previewPreset = null;
+        previewVolumeMultiplier = BiteSoundConfig.DEFAULT_ALERT_VOLUME;
         previewRemainingTicks = 0;
         previewCooldownTicks = 0;
     }
 
-    private SimpleSoundInstance replaceSound(
+    public void stopAll(Minecraft client) {
+        stopBite(client);
+        stopPreview(client);
+    }
+
+    private @Nullable SimpleSoundInstance replaceSound(
         Minecraft client,
         @Nullable SimpleSoundInstance previous,
-        BiteSoundPreset preset
+        BiteSoundPreset preset,
+        double volumeMultiplier
     ) {
         if (previous != null) {
             client.getSoundManager().stop(previous);
         }
-        SimpleSoundInstance next = SimpleSoundInstance.forUI(preset.sound(), preset.pitch(), preset.volume());
+        float finalVolume = (float)(preset.baseVolume()
+            * BiteSoundConfig.sanitizeForPlayback(volumeMultiplier));
+        if (finalVolume <= 0.0F) {
+            return null;
+        }
+        SimpleSoundInstance next = SimpleSoundInstance.forUI(preset.sound(), preset.pitch(), finalVolume);
         client.getSoundManager().play(next);
         return next;
     }

@@ -10,10 +10,10 @@ logs/
 crash-reports/
 saves/
 screenshots/
-resourcepacks/
-shaderpacks/
-mods/
-config/
+/resourcepacks/
+/shaderpacks/
+/mods/
+/config/
 options.txt
 servers.dat
 usercache.json

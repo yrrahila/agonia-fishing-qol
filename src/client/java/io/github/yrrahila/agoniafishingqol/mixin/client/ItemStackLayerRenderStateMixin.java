@@ -1,6 +1,7 @@
 package io.github.yrrahila.agoniafishingqol.mixin.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import io.github.yrrahila.agoniafishingqol.AgoniaFishingQolClient;
 import io.github.yrrahila.agoniafishingqol.FirstPersonRodVisuals;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
@@ -27,7 +28,7 @@ public abstract class ItemStackLayerRenderStateMixin {
         int outlineColor,
         CallbackInfo ci
     ) {
-        if (FirstPersonRodVisuals.isCaptureActive()) {
+        if (AgoniaFishingQolClient.isEnabled() && FirstPersonRodVisuals.isCaptureActive()) {
             FirstPersonRodVisuals.captureRenderedTip(poseStack.last());
         }
     }
