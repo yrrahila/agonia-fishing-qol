@@ -36,7 +36,7 @@ public final class FishingTracker {
     private static final float BITE_SOUND_VOLUME = 1.60F;
 
     private FishingHook activeHook;
-    private long biteCycleStartTick = -1L;
+    private long cycleStartTick = -1L;
     private long approachingUntilTick = Long.MIN_VALUE;
     private boolean lastApproaching;
     private boolean lastBiting;
@@ -71,6 +71,7 @@ public final class FishingTracker {
             clearFishingState(client);
             activeHook = ownHook;
             lureLevelAtCast = readLureLevel(client, heldRod);
+            cycleStartTick = client.level.getGameTime();
         }
 
         activeHook.setGlowingTag(true);
@@ -82,9 +83,6 @@ public final class FishingTracker {
             resetVisualAnchor();
         }
         if (inWater) {
-            if (biteCycleStartTick < 0L) {
-                biteCycleStartTick = gameTime;
-            }
             if (!biting) {
                 inWaterTicks++;
                 if (visualAnchor == null && inWaterTicks >= SETTLE_TICKS_BEFORE_ANCHOR) {
@@ -94,7 +92,6 @@ public final class FishingTracker {
                 inWaterTicks = 0;
             }
         } else {
-            biteCycleStartTick = -1L;
             resetVisualAnchor();
         }
 
@@ -115,7 +112,7 @@ public final class FishingTracker {
         } else {
             stopBiteSound(client);
             if (lastBiting) {
-                biteCycleStartTick = inWater ? gameTime : -1L;
+                cycleStartTick = gameTime;
             }
         }
 
@@ -133,7 +130,8 @@ public final class FishingTracker {
             : approaching ? BobberStatus.FISH_APPROACHING : BobberStatus.WAITING;
         snapshot = new FishingSnapshot(
             status,
-            approaching ? "Coming" : estimateBite(client, gameTime, inWater, biting),
+            biting ? "Ready" : approaching ? "Incoming" : estimateBite(client, inWater),
+            elapsedCycleTime(gameTime),
             durability.remaining(),
             durability.maximum(),
             biting
@@ -417,11 +415,8 @@ public final class FishingTracker {
         }
     }
 
-    private String estimateBite(Minecraft client, long gameTime, boolean inWater, boolean biting) {
-        if (biting) {
-            return "0-0s";
-        }
-        if (!inWater || biteCycleStartTick < 0L) {
+    private String estimateBite(Minecraft client, boolean inWater) {
+        if (!inWater) {
             return "--";
         }
 
@@ -435,10 +430,16 @@ public final class FishingTracker {
         minimumTicks = (int)Math.ceil(minimumTicks / expectedTickRate);
         maximumTicks = (int)Math.ceil(maximumTicks / expectedTickRate);
 
-        long elapsed = Math.max(0L, gameTime - biteCycleStartTick);
-        double minSeconds = Math.max(0L, minimumTicks - elapsed) / 20.0;
-        double maxSeconds = Math.max(0L, maximumTicks - elapsed) / 20.0;
+        double minSeconds = minimumTicks / 20.0;
+        double maxSeconds = maximumTicks / 20.0;
         return String.format(Locale.ROOT, "%d-%ds", (int)Math.floor(minSeconds), (int)Math.ceil(maxSeconds));
+    }
+
+    private String elapsedCycleTime(long gameTime) {
+        if (cycleStartTick < 0L) {
+            return "0.0s";
+        }
+        return String.format(Locale.ROOT, "%.1fs", Math.max(0L, gameTime - cycleStartTick) / 20.0);
     }
 
     private boolean approximately(float actual, float expected) {
@@ -457,7 +458,7 @@ public final class FishingTracker {
         stopBiteSound(client);
         FishingVisualState.clear();
         activeHook = null;
-        biteCycleStartTick = -1L;
+        cycleStartTick = -1L;
         approachingUntilTick = Long.MIN_VALUE;
         lastApproaching = false;
         lastBiting = false;
