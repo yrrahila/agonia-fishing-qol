@@ -2,6 +2,9 @@ package io.github.yrrahila.agoniafishingqol;
 
 import io.github.yrrahila.agoniafishingqol.FishingSnapshot.BobberStatus;
 import io.github.yrrahila.agoniafishingqol.mixin.client.FishingHookAccessor;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -56,6 +59,7 @@ public final class FishingTracker {
     private @Nullable Vec3 visualAnchor;
     private @Nullable SimpleSoundInstance activeApproachSound;
     private @Nullable SimpleSoundInstance activeBiteSound;
+    private final List<SingleQuadParticle> activeTrailParticles = new ArrayList<>();
     private FishingSnapshot snapshot = FishingSnapshot.NOT_CAST;
 
     public void tick(Minecraft client) {
@@ -106,6 +110,7 @@ public final class FishingTracker {
         }
 
         boolean approaching = !biting && gameTime <= approachingUntilTick;
+        updateActiveTrailColor(approaching, biting);
 
         if (approaching && !lastApproaching) {
             playApproachSound(client);
@@ -340,6 +345,7 @@ public final class FishingTracker {
     }
 
     private void renderColoredBiteEffect(Minecraft client, ClientboundLevelParticlesPacket packet) {
+        recolorActiveTrail(TRAIL_GREEN_RED, TRAIL_GREEN_GREEN, TRAIL_GREEN_BLUE);
         int count = Math.min(Math.max(packet.getCount(), 4), 12);
         for (int i = 0; i < count; i++) {
             double angle = Math.PI * 2.0 * i / count;
@@ -372,10 +378,42 @@ public final class FishingTracker {
         Particle particle = client.particleEngine.createParticle(ParticleTypes.FISHING, x, y, z, xa, ya, za);
         if (particle instanceof SingleQuadParticle quadParticle) {
             quadParticle.setColor(red, green, blue);
+            activeTrailParticles.add(quadParticle);
         }
         if (particle != null) {
             particle.scale(TRAIL_SCALE);
         }
+    }
+
+    private void updateActiveTrailColor(boolean approaching, boolean biting) {
+        if (biting) {
+            recolorActiveTrail(TRAIL_GREEN_RED, TRAIL_GREEN_GREEN, TRAIL_GREEN_BLUE);
+        } else if (approaching) {
+            recolorActiveTrail(TRAIL_YELLOW_RED, TRAIL_YELLOW_GREEN, TRAIL_YELLOW_BLUE);
+        } else {
+            removeActiveTrail();
+        }
+    }
+
+    private void recolorActiveTrail(float red, float green, float blue) {
+        Iterator<SingleQuadParticle> iterator = activeTrailParticles.iterator();
+        while (iterator.hasNext()) {
+            SingleQuadParticle particle = iterator.next();
+            if (!particle.isAlive()) {
+                iterator.remove();
+                continue;
+            }
+            particle.setColor(red, green, blue);
+        }
+    }
+
+    private void removeActiveTrail() {
+        for (SingleQuadParticle particle : activeTrailParticles) {
+            if (particle.isAlive()) {
+                particle.remove();
+            }
+        }
+        activeTrailParticles.clear();
     }
 
     private void playApproachSound(Minecraft client) {
@@ -516,6 +554,7 @@ public final class FishingTracker {
         clearPreviousHighlight();
         stopApproachSound(client);
         stopBiteSound(client);
+        removeActiveTrail();
         FishingVisualState.clear();
         activeHook = null;
         cycleStartTick = -1L;

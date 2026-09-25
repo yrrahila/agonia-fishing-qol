@@ -5,12 +5,13 @@
   "name": "Agonia Fishing QoL",
   "description": "Strictly client-side, notification-only fishing quality-of-life tools for multiplayer.",
   "authors": [
-    "yrrahila"
+    "Yxad"
   ],
   "contact": {
     "sources": "https://github.com/yrrahila/agonia-fishing-qol"
   },
   "license": "MIT",
+  "icon": "assets/agonia_fishing_qol/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": [

@@ -5,6 +5,8 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 
 public final class FishingHud {
     private static final int PANEL_BACKGROUND = 0x90000000;
@@ -25,9 +27,13 @@ public final class FishingHud {
         Minecraft client = Minecraft.getInstance();
         Font font = client.font;
         List<Line> lines = new ArrayList<>();
-        lines.add(new Line("Cast: " + snapshot.elapsedTime(), TEXT));
-        lines.add(new Line("Estimated: " + snapshot.estimatedBite(), TEXT));
-        lines.add(new Line("Durability: " + snapshot.rodDurability() + " / " + snapshot.rodMaxDurability(), TEXT));
+        lines.add(new Line(Component.literal("Agonia Fishing QoL").withStyle(ChatFormatting.BOLD), TEXT));
+        lines.add(new Line(Component.literal("Cast: " + snapshot.elapsedTime()), TEXT));
+        lines.add(new Line(Component.literal("Estimated: " + snapshot.estimatedBite()), TEXT));
+        lines.add(new Line(
+            Component.literal("Durability: " + snapshot.rodDurability() + " / " + snapshot.rodMaxDurability()),
+            TEXT
+        ));
 
         int width = lines.stream().mapToInt(line -> font.width(line.text())).max().orElse(0);
         int height = lines.size() * 10;
@@ -62,6 +68,6 @@ public final class FishingHud {
         graphics.pose().popMatrix();
     }
 
-    private record Line(String text, int color) {
+    private record Line(Component text, int color) {
     }
 }
