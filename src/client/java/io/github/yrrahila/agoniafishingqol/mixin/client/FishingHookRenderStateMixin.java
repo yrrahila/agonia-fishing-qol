@@ -1,7 +1,9 @@
 package io.github.yrrahila.agoniafishingqol.mixin.client;
 
 import io.github.yrrahila.agoniafishingqol.FishingHookRenderStateAccess;
+import java.util.List;
 import net.minecraft.client.renderer.entity.state.FishingHookRenderState;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
@@ -15,6 +17,9 @@ public final class FishingHookRenderStateMixin implements FishingHookRenderState
 
     @Unique
     private boolean agoniaFishingQol$biting;
+
+    @Unique
+    private List<Vec3> agoniaFishingQol$trailPositions = List.of();
 
     @Override
     public void agoniaFishingQol$setOwnHook(boolean ownHook) {
@@ -44,5 +49,15 @@ public final class FishingHookRenderStateMixin implements FishingHookRenderState
     @Override
     public boolean agoniaFishingQol$isBiting() {
         return this.agoniaFishingQol$biting;
+    }
+
+    @Override
+    public void agoniaFishingQol$setTrailPositions(List<Vec3> positions) {
+        this.agoniaFishingQol$trailPositions = positions;
+    }
+
+    @Override
+    public List<Vec3> agoniaFishingQol$trailPositions() {
+        return this.agoniaFishingQol$trailPositions;
     }
 }

@@ -1,5 +1,6 @@
 package io.github.yrrahila.agoniafishingqol;
 
+import java.util.List;
 import net.minecraft.world.entity.projectile.FishingHook;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -12,6 +13,7 @@ public final class FishingVisualState {
     private static @Nullable Vec3 anchor;
     private static float previousAnchorWeight;
     private static float anchorWeight;
+    private static List<TrailSegment> trailSegments = List.of();
 
     private FishingVisualState() {
     }
@@ -22,7 +24,8 @@ public final class FishingVisualState {
         boolean biteReady,
         @Nullable Vec3 visualAnchor,
         float previousWeight,
-        float currentWeight
+        float currentWeight,
+        List<TrailSegment> visibleTrailSegments
     ) {
         ownHookId = hook.getId();
         approaching = fishApproaching;
@@ -30,6 +33,7 @@ public final class FishingVisualState {
         anchor = visualAnchor;
         previousAnchorWeight = previousWeight;
         anchorWeight = currentWeight;
+        trailSegments = List.copyOf(visibleTrailSegments);
     }
 
     public static void clear() {
@@ -39,6 +43,7 @@ public final class FishingVisualState {
         anchor = null;
         previousAnchorWeight = 0.0F;
         anchorWeight = 0.0F;
+        trailSegments = List.of();
     }
 
     public static boolean isOwnHook(FishingHook hook) {
@@ -59,5 +64,14 @@ public final class FishingVisualState {
 
     public static float interpolatedAnchorWeight(float partialTicks) {
         return previousAnchorWeight + (anchorWeight - previousAnchorWeight) * partialTicks;
+    }
+
+    public static List<Vec3> interpolatedTrailPositions(float partialTicks) {
+        return trailSegments.stream()
+            .map(segment -> segment.previousPosition().lerp(segment.position(), partialTicks))
+            .toList();
+    }
+
+    public record TrailSegment(Vec3 previousPosition, Vec3 position) {
     }
 }

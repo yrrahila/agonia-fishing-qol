@@ -8,8 +8,6 @@ import java.util.List;
 import java.util.Locale;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.Particle;
-import net.minecraft.client.particle.SingleQuadParticle;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
@@ -37,13 +35,7 @@ public final class FishingTracker {
     private static final float ANCHOR_BLEND_PER_TICK = 1.0F / 8.0F;
     private static final float APPROACH_SOUND_PITCH = 1.10F;
     private static final float APPROACH_SOUND_VOLUME = 1.55F;
-    private static final float TRAIL_SCALE = 2.25F;
-    private static final float TRAIL_YELLOW_RED = 1.0F;
-    private static final float TRAIL_YELLOW_GREEN = 1.0F;
-    private static final float TRAIL_YELLOW_BLUE = 0.0F;
-    private static final float TRAIL_GREEN_RED = 0.0F;
-    private static final float TRAIL_GREEN_GREEN = 1.0F;
-    private static final float TRAIL_GREEN_BLUE = 0.0F;
+    private static final int TRAIL_LIFETIME_TICKS = 20;
 
     private FishingHook activeHook;
     private long cycleStartTick = -1L;
@@ -58,7 +50,7 @@ public final class FishingTracker {
     private float anchorWeight;
     private @Nullable Vec3 visualAnchor;
     private @Nullable SimpleSoundInstance activeApproachSound;
-    private final List<SingleQuadParticle> activeTrailParticles = new ArrayList<>();
+    private final List<TrackedTrailSegment> activeTrailSegments = new ArrayList<>();
     private FishingSnapshot snapshot = FishingSnapshot.NOT_CAST;
 
     public void tick(Minecraft client) {
@@ -109,7 +101,7 @@ public final class FishingTracker {
         }
 
         boolean approaching = !biting && gameTime <= approachingUntilTick;
-        updateActiveTrailColor(approaching, biting);
+        tickActiveTrail(approaching, biting);
 
         if (approaching && !lastApproaching) {
             playApproachSound(client);
@@ -134,7 +126,8 @@ public final class FishingTracker {
             biting,
             visualAnchor,
             previousAnchorWeight,
-            anchorWeight
+            anchorWeight,
+            trailSnapshot()
         );
         BobberStatus status = biting
             ? BobberStatus.BITE_READY
@@ -161,7 +154,7 @@ public final class FishingTracker {
                     && ownHook.getPlayerOwner() == client.player
                     && approachTrailBelongsToOwnHook(client, ownHook, packet)) {
                     approachingUntilTick = client.level.getGameTime() + APPROACH_STATE_GRACE_TICKS;
-                    renderColoredApproachTrail(client, packet);
+                    addApproachTrail(packet);
                 }
             }
             // Every vanilla fishing wake is hidden. A replacement is created only when this
@@ -176,7 +169,7 @@ public final class FishingTracker {
                     && !ownHook.isRemoved()
                     && ownHook.getPlayerOwner() == client.player
                     && closeFishingEffectBelongsToOwnHook(client, ownHook, packet)) {
-                    renderColoredBiteEffect(client, packet);
+                    addBiteEffect(packet);
                 }
             }
             return true;
@@ -336,7 +329,7 @@ public final class FishingTracker {
         return Mth.square(hook.getX() - x) + Mth.square(hook.getZ() - z);
     }
 
-    private void renderColoredApproachTrail(Minecraft client, ClientboundLevelParticlesPacket packet) {
+    private void addApproachTrail(ClientboundLevelParticlesPacket packet) {
         double xa = packet.getMaxSpeed() * packet.getXDist();
         double ya = packet.getMaxSpeed() * packet.getYDist();
         double za = packet.getMaxSpeed() * packet.getZDist();
@@ -349,86 +342,63 @@ public final class FishingTracker {
         };
 
         for (double[] offset : offsets) {
-            createColoredFishingParticle(
-                client,
+            addTrailSegment(
                 packet.getX() + offset[0], packet.getY() + offset[1], packet.getZ() + offset[2],
-                xa, ya, za,
-                TRAIL_YELLOW_RED, TRAIL_YELLOW_GREEN, TRAIL_YELLOW_BLUE
+                xa, ya, za
             );
         }
     }
 
-    private void renderColoredBiteEffect(Minecraft client, ClientboundLevelParticlesPacket packet) {
-        recolorActiveTrail(TRAIL_GREEN_RED, TRAIL_GREEN_GREEN, TRAIL_GREEN_BLUE);
+    private void addBiteEffect(ClientboundLevelParticlesPacket packet) {
         int count = Math.min(Math.max(packet.getCount(), 4), 12);
         for (int i = 0; i < count; i++) {
             double angle = Math.PI * 2.0 * i / count;
             double radius = 0.08 + 0.02 * (i % 3);
-            createColoredFishingParticle(
-                client,
+            addTrailSegment(
                 packet.getX() + Math.cos(angle) * radius,
                 packet.getY() + 0.02 * (i % 2),
                 packet.getZ() + Math.sin(angle) * radius,
                 Math.cos(angle) * 0.02,
                 0.015,
-                Math.sin(angle) * 0.02,
-                TRAIL_GREEN_RED, TRAIL_GREEN_GREEN, TRAIL_GREEN_BLUE
+                Math.sin(angle) * 0.02
             );
         }
     }
 
-    private void createColoredFishingParticle(
-        Minecraft client,
+    private void addTrailSegment(
         double x,
         double y,
         double z,
         double xa,
         double ya,
-        double za,
-        float red,
-        float green,
-        float blue
+        double za
     ) {
-        Particle particle = client.particleEngine.createParticle(ParticleTypes.FISHING, x, y, z, xa, ya, za);
-        if (particle instanceof SingleQuadParticle quadParticle) {
-            quadParticle.setColor(red, green, blue);
-            ((FishingTrailParticleAccess)quadParticle).agoniaFishingQol$setFullBright(true);
-            activeTrailParticles.add(quadParticle);
-        }
-        if (particle != null) {
-            particle.scale(TRAIL_SCALE);
-        }
+        activeTrailSegments.add(new TrackedTrailSegment(new Vec3(x, y, z), new Vec3(xa, ya, za)));
     }
 
-    private void updateActiveTrailColor(boolean approaching, boolean biting) {
-        if (biting) {
-            recolorActiveTrail(TRAIL_GREEN_RED, TRAIL_GREEN_GREEN, TRAIL_GREEN_BLUE);
-        } else if (approaching) {
-            recolorActiveTrail(TRAIL_YELLOW_RED, TRAIL_YELLOW_GREEN, TRAIL_YELLOW_BLUE);
-        } else {
+    private void tickActiveTrail(boolean approaching, boolean biting) {
+        if (!approaching && !biting) {
             removeActiveTrail();
+            return;
         }
-    }
 
-    private void recolorActiveTrail(float red, float green, float blue) {
-        Iterator<SingleQuadParticle> iterator = activeTrailParticles.iterator();
+        Iterator<TrackedTrailSegment> iterator = activeTrailSegments.iterator();
         while (iterator.hasNext()) {
-            SingleQuadParticle particle = iterator.next();
-            if (!particle.isAlive()) {
+            TrackedTrailSegment segment = iterator.next();
+            if (!segment.tick()) {
                 iterator.remove();
-                continue;
             }
-            particle.setColor(red, green, blue);
         }
     }
 
     private void removeActiveTrail() {
-        for (SingleQuadParticle particle : activeTrailParticles) {
-            if (particle.isAlive()) {
-                particle.remove();
-            }
-        }
-        activeTrailParticles.clear();
+        activeTrailSegments.clear();
+    }
+
+    private List<FishingVisualState.TrailSegment> trailSnapshot() {
+        return activeTrailSegments.stream()
+            .map(segment -> new FishingVisualState.TrailSegment(segment.previousPosition, segment.position))
+            .toList();
     }
 
     private void playApproachSound(Minecraft client) {
@@ -596,5 +566,25 @@ public final class FishingTracker {
     }
 
     private record RodDurability(int remaining, int maximum) {
+    }
+
+    private static final class TrackedTrailSegment {
+        private Vec3 previousPosition;
+        private Vec3 position;
+        private Vec3 velocity;
+        private int remainingTicks = TRAIL_LIFETIME_TICKS;
+
+        private TrackedTrailSegment(Vec3 position, Vec3 velocity) {
+            this.previousPosition = position;
+            this.position = position;
+            this.velocity = velocity;
+        }
+
+        private boolean tick() {
+            previousPosition = position;
+            position = position.add(velocity);
+            velocity = velocity.scale(0.98);
+            return --remainingTicks > 0;
+        }
     }
 }

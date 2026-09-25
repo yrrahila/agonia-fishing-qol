@@ -15,6 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ItemInHandRenderer.class)
 public abstract class ItemInHandRendererMixin {
     private static final float FISHING_ROD_SCALE = 0.82F;
+    private static final float FISHING_ROD_CAMERA_OFFSET = -0.32F;
 
     @Inject(method = "renderItem", at = @At("HEAD"))
     private void agoniaFishingQol$pushSmallerFishingRod(
@@ -28,6 +29,7 @@ public abstract class ItemInHandRendererMixin {
     ) {
         if (agoniaFishingQol$isFirstPersonFishingRod(itemStack, displayContext)) {
             poseStack.pushPose();
+            poseStack.translate(0.0F, 0.0F, FISHING_ROD_CAMERA_OFFSET);
             poseStack.scale(FISHING_ROD_SCALE, FISHING_ROD_SCALE, FISHING_ROD_SCALE);
         }
     }

@@ -26,6 +26,7 @@ public abstract class FishingHookRendererMixin {
     private static final float NORMAL_BOBBER_SCALE = 0.58F;
     private static final float BITE_BOBBER_SCALE = 1.35F;
     private static final float LINE_WIDTH_MULTIPLIER = 2.0F;
+    private static final float TRAIL_HALF_SIZE = 0.055F;
 
     @Inject(
         method = "extractRenderState(Lnet/minecraft/world/entity/projectile/FishingHook;Lnet/minecraft/client/renderer/entity/state/FishingHookRenderState;F)V",
@@ -44,6 +45,9 @@ public abstract class FishingHookRendererMixin {
         extension.agoniaFishingQol$setOwnHook(ownHook);
         extension.agoniaFishingQol$setApproaching(approaching);
         extension.agoniaFishingQol$setBiting(biting);
+        extension.agoniaFishingQol$setTrailPositions(
+            ownHook ? FishingVisualState.interpolatedTrailPositions(partialTicks) : java.util.List.of()
+        );
 
         Vec3 anchor = ownHook ? FishingVisualState.anchor() : null;
         float anchorWeight = anchor == null ? 0.0F : FishingVisualState.interpolatedAnchorWeight(partialTicks);
@@ -90,17 +94,34 @@ public abstract class FishingHookRendererMixin {
         poseStack.pushPose();
         poseStack.pushPose();
         poseStack.scale(bobberScale, bobberScale, bobberScale);
-        poseStack.mulPose(camera.orientation);
         submitNodeCollector.submitCustomGeometry(poseStack, RenderTypes.debugQuads(), (pose, buffer) -> {
-            // Rebuild the vanilla 8x8 bobber silhouette with untextured color-only quads. Unlike
-            // texture tinting, every visible pixel receives the state color instead of retaining red texels.
-            agoniaFishingQol$bobberRect(buffer, pose, -0.125F, 0.0F, 0.25F, 0.375F, phaseColor);
-            agoniaFishingQol$bobberRect(buffer, pose, 0.0F, -0.25F, 0.125F, 0.0F, phaseColor);
-            agoniaFishingQol$bobberRect(buffer, pose, -0.25F, -0.375F, -0.125F, -0.25F, phaseColor);
-            agoniaFishingQol$bobberRect(buffer, pose, 0.0F, -0.5F, 0.125F, -0.25F, phaseColor);
-            agoniaFishingQol$bobberRect(buffer, pose, -0.125F, -0.5F, 0.0F, -0.375F, phaseColor);
+            // A compact two-part 3D float. The color-only render type is unlit and keeps all
+            // transformations local to this custom geometry submission.
+            agoniaFishingQol$cuboid(buffer, pose, -0.22F, -0.38F, -0.22F, 0.22F, 0.06F, 0.22F, phaseColor);
+            agoniaFishingQol$cuboid(buffer, pose, -0.07F, 0.06F, -0.07F, 0.07F, 0.34F, 0.07F, phaseColor);
         });
         poseStack.popPose();
+
+        if (!extension.agoniaFishingQol$trailPositions().isEmpty()) {
+            submitNodeCollector.submitCustomGeometry(poseStack, RenderTypes.debugQuads(), (pose, buffer) -> {
+                for (Vec3 position : extension.agoniaFishingQol$trailPositions()) {
+                    float x = (float)(position.x - state.x);
+                    float y = (float)(position.y - state.y);
+                    float z = (float)(position.z - state.z);
+                    agoniaFishingQol$cuboid(
+                        buffer,
+                        pose,
+                        x - TRAIL_HALF_SIZE,
+                        y - TRAIL_HALF_SIZE * 0.35F,
+                        z - TRAIL_HALF_SIZE,
+                        x + TRAIL_HALF_SIZE,
+                        y + TRAIL_HALF_SIZE * 0.35F,
+                        z + TRAIL_HALF_SIZE,
+                        phaseColor
+                    );
+                }
+            });
+        }
 
         float xa = (float)state.lineOriginOffset.x;
         float ya = (float)state.lineOriginOffset.y;
@@ -119,19 +140,46 @@ public abstract class FishingHookRendererMixin {
         ci.cancel();
     }
 
-    private static void agoniaFishingQol$bobberRect(
+    private static void agoniaFishingQol$cuboid(
         VertexConsumer builder,
         PoseStack.Pose pose,
-        float left,
-        float bottom,
-        float right,
-        float top,
+        float minX,
+        float minY,
+        float minZ,
+        float maxX,
+        float maxY,
+        float maxZ,
         int color
     ) {
-        builder.addVertex(pose, left, bottom, 0.0F).setColor(color);
-        builder.addVertex(pose, right, bottom, 0.0F).setColor(color);
-        builder.addVertex(pose, right, top, 0.0F).setColor(color);
-        builder.addVertex(pose, left, top, 0.0F).setColor(color);
+        agoniaFishingQol$quad(builder, pose, minX, minY, minZ, maxX, minY, minZ, maxX, maxY, minZ, minX, maxY, minZ, color);
+        agoniaFishingQol$quad(builder, pose, maxX, minY, maxZ, minX, minY, maxZ, minX, maxY, maxZ, maxX, maxY, maxZ, color);
+        agoniaFishingQol$quad(builder, pose, minX, minY, maxZ, minX, minY, minZ, minX, maxY, minZ, minX, maxY, maxZ, color);
+        agoniaFishingQol$quad(builder, pose, maxX, minY, minZ, maxX, minY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, color);
+        agoniaFishingQol$quad(builder, pose, minX, maxY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, minX, maxY, maxZ, color);
+        agoniaFishingQol$quad(builder, pose, minX, minY, maxZ, maxX, minY, maxZ, maxX, minY, minZ, minX, minY, minZ, color);
+    }
+
+    private static void agoniaFishingQol$quad(
+        VertexConsumer builder,
+        PoseStack.Pose pose,
+        float x0,
+        float y0,
+        float z0,
+        float x1,
+        float y1,
+        float z1,
+        float x2,
+        float y2,
+        float z2,
+        float x3,
+        float y3,
+        float z3,
+        int color
+    ) {
+        builder.addVertex(pose, x0, y0, z0).setColor(color);
+        builder.addVertex(pose, x1, y1, z1).setColor(color);
+        builder.addVertex(pose, x2, y2, z2).setColor(color);
+        builder.addVertex(pose, x3, y3, z3).setColor(color);
     }
 
     private static void agoniaFishingQol$stringVertex(

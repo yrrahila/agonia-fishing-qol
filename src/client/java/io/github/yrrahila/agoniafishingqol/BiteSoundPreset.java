@@ -9,7 +9,6 @@ public enum BiteSoundPreset {
     PLING("pling", "Pling", SoundEvents.NOTE_BLOCK_PLING.value(), 1.45F, 1.35F, 14),
     XP("xp", "XP", SoundEvents.EXPERIENCE_ORB_PICKUP, 1.35F, 1.00F, 12),
     LEVEL_UP("level_up", "Level Up", SoundEvents.PLAYER_LEVELUP, 1.10F, 1.00F, 38),
-    AMETHYST("amethyst", "Amethyst", SoundEvents.AMETHYST_BLOCK_RESONATE, 1.00F, 1.15F, 24),
     SNARE("snare", "Snare", SoundEvents.NOTE_BLOCK_SNARE.value(), 1.40F, 1.00F, 16);
 
     public static final BiteSoundPreset DEFAULT = CHALLENGE;
