@@ -27,14 +27,17 @@ The distributable JAR is written to `build/libs/`.
 ## Included QoL features
 
 - One action-bar warning when a held fishing rod reaches 10 durability or less.
-- A moderately prominent built-in experience-orb pickup sound and enlarged green `BITE!` HUD notification for a confirmed bite.
-- A compact status HUD showing `Not Cast`, `Waiting`, or `Bite Ready`.
+- A yellow `WAIT...` alert and distinct approach sound when the local hook's real server-sent fish trail begins.
+- A substantially enlarged green `BITE!` alert with a lower-pitched bell pulse that repeats only while the bite remains ready.
+- A compact status HUD showing `Not Cast`, `Waiting`, `Fish Approaching`, or `Bite Ready`.
 - A deliberately labelled estimated bite-time range based on vanilla's random wait bounds, Lure, rain, and sky exposure.
-- A client-only glow that makes the local player's bobber easier to identify without adding particles.
-- Vanilla-compatible open-water evaluation over the same 5×5×4 area, shown as a simple pass/fail result.
+- A client-only glow, a red waiting line, a green bite-ready line, and an enlarged gold bite-ready bobber.
+- A render-only resting anchor that removes the local bobber's idle bobbing after it settles without moving the real entity.
+- A denser, larger version of the vanilla fishing wake for the local player's approach trail, with idle fishing splashes suppressed.
+- Static vanilla water sprite frames, with no changes to water blocks, physics, movement, or server state.
 
 ## Multiplayer safety
 
-The tracker reads only `LocalPlayer.fishing` and also verifies that the hook's owner is the local player. It never scans nearby hooks for bite events. The mod contains no casting, reeling, inventory, movement, interaction, or packet-sending code.
+The tracker reads only `LocalPlayer.fishing` and also verifies that the hook's owner is the local player. Bite state comes directly from that synchronized hook. Approach particles are accepted only when their exact vanilla fishing-trail packet signature is closest to that hook; ambiguous overlapping trails are ignored. The mod contains no casting, reeling, inventory, movement, interaction, or packet-sending code.
 
 The exact server-side random fishing countdown and the server's internal approaching-fish phase are not synchronized to clients. For that reason, the HUD reports a range rather than a guaranteed countdown and does not claim to identify the approaching phase. Modified server fishing mechanics may make the estimate less accurate.

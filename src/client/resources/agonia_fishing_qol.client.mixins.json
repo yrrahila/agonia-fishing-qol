@@ -3,10 +3,14 @@
   "package": "io.github.yrrahila.agoniafishingqol.mixin.client",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "FishingHookAccessor"
+    "ClientPacketListenerMixin",
+    "FishingHookAccessor",
+    "FishingHookRendererMixin",
+    "FishingHookRenderStateMixin",
+    "SpriteAnimationStateMixin",
+    "SpriteContentsMixin"
   ],
   "injectors": {
     "defaultRequire": 1
   }
 }
-

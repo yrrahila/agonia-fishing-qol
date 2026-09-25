@@ -10,6 +10,10 @@ public final class AgoniaFishingQolClient implements ClientModInitializer {
     public static final String MOD_ID = "agonia_fishing_qol";
     private static final FishingTracker TRACKER = new FishingTracker();
 
+    public static FishingTracker tracker() {
+        return TRACKER;
+    }
+
     @Override
     public void onInitializeClient() {
         ClientTickEvents.END_CLIENT_TICK.register(TRACKER::tick);
@@ -20,4 +24,3 @@ public final class AgoniaFishingQolClient implements ClientModInitializer {
         );
     }
 }
-
