@@ -1,11 +1,12 @@
 package io.github.yrrahila.agoniafishingqol.mixin.client;
 
+import io.github.yrrahila.agoniafishingqol.FishingHookRenderStateAccess;
 import net.minecraft.client.renderer.entity.state.FishingHookRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(FishingHookRenderState.class)
-public final class FishingHookRenderStateMixin implements FishingHookRenderStateExtension {
+public final class FishingHookRenderStateMixin implements FishingHookRenderStateAccess {
     @Unique
     private boolean agoniaFishingQol$ownHook;
 

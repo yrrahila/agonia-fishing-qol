@@ -2,6 +2,7 @@ package io.github.yrrahila.agoniafishingqol.mixin.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import io.github.yrrahila.agoniafishingqol.FishingHookRenderStateAccess;
 import io.github.yrrahila.agoniafishingqol.FishingVisualState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -39,7 +40,7 @@ public abstract class FishingHookRendererMixin {
         float partialTicks,
         CallbackInfo ci
     ) {
-        FishingHookRenderStateExtension extension = (FishingHookRenderStateExtension)state;
+        FishingHookRenderStateAccess extension = (FishingHookRenderStateAccess)state;
         boolean ownHook = FishingVisualState.isOwnHook(entity);
         boolean biting = ownHook && FishingVisualState.isBiting();
         extension.agoniaFishingQol$setOwnHook(ownHook);
@@ -73,7 +74,7 @@ public abstract class FishingHookRendererMixin {
         CameraRenderState camera,
         CallbackInfo ci
     ) {
-        FishingHookRenderStateExtension extension = (FishingHookRenderStateExtension)state;
+        FishingHookRenderStateAccess extension = (FishingHookRenderStateAccess)state;
         if (!extension.agoniaFishingQol$isOwnHook()) {
             return;
         }
