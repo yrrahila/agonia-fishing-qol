@@ -8,13 +8,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.FishingHookRenderer;
 import net.minecraft.client.renderer.entity.state.FishingHookRenderState;
-import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
-import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.projectile.FishingHook;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -22,13 +20,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(FishingHookRenderer.class)
 public abstract class FishingHookRendererMixin {
-    private static final RenderType AGONIA_FISHING_QOL_RENDER_TYPE = RenderTypes.entityCutoutCull(
-        Identifier.withDefaultNamespace("textures/entity/fishing/fishing_hook.png")
-    );
     private static final int WAITING_COLOR = 0xFFFF3030;
     private static final int APPROACHING_COLOR = 0xFFFFD43B;
     private static final int BITE_COLOR = 0xFF35FF63;
-    private static final float LINE_WIDTH_MULTIPLIER = 1.35F;
+    private static final float LINE_WIDTH_MULTIPLIER = 2.0F;
 
     @Inject(
         method = "extractRenderState(Lnet/minecraft/world/entity/projectile/FishingHook;Lnet/minecraft/client/renderer/entity/state/FishingHookRenderState;F)V",
@@ -47,6 +42,25 @@ public abstract class FishingHookRendererMixin {
         extension.agoniaFishingQol$setOwnHook(ownHook);
         extension.agoniaFishingQol$setApproaching(approaching);
         extension.agoniaFishingQol$setBiting(biting);
+
+        Vec3 anchor = ownHook ? FishingVisualState.anchor() : null;
+        float anchorWeight = anchor == null ? 0.0F : FishingVisualState.interpolatedAnchorWeight(partialTicks);
+        if (anchorWeight > 0.0F) {
+            double actualX = state.x;
+            double actualY = state.y;
+            double actualZ = state.z;
+            double renderedX = Mth.lerp(anchorWeight, actualX, anchor.x);
+            double renderedY = Mth.lerp(anchorWeight, actualY, anchor.y);
+            double renderedZ = Mth.lerp(anchorWeight, actualZ, anchor.z);
+            state.lineOriginOffset = state.lineOriginOffset.add(
+                actualX - renderedX,
+                actualY - renderedY,
+                actualZ - renderedZ
+            );
+            state.x = renderedX;
+            state.y = renderedY;
+            state.z = renderedZ;
+        }
     }
 
     @Inject(
@@ -75,11 +89,14 @@ public abstract class FishingHookRendererMixin {
         poseStack.pushPose();
         poseStack.scale(bobberScale, bobberScale, bobberScale);
         poseStack.mulPose(camera.orientation);
-        submitNodeCollector.submitCustomGeometry(poseStack, AGONIA_FISHING_QOL_RENDER_TYPE, (pose, buffer) -> {
-            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 0.0F, 0, 0, 1, phaseColor);
-            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 1.0F, 0, 1, 1, phaseColor);
-            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 1.0F, 1, 1, 0, phaseColor);
-            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 0.0F, 1, 0, 0, phaseColor);
+        submitNodeCollector.submitCustomGeometry(poseStack, RenderTypes.debugQuads(), (pose, buffer) -> {
+            // Rebuild the vanilla 8x8 bobber silhouette with untextured color-only quads. Unlike
+            // texture tinting, every visible pixel receives the state color instead of retaining red texels.
+            agoniaFishingQol$bobberRect(buffer, pose, -0.125F, 0.0F, 0.25F, 0.375F, phaseColor);
+            agoniaFishingQol$bobberRect(buffer, pose, 0.0F, -0.25F, 0.125F, 0.0F, phaseColor);
+            agoniaFishingQol$bobberRect(buffer, pose, -0.25F, -0.375F, -0.125F, -0.25F, phaseColor);
+            agoniaFishingQol$bobberRect(buffer, pose, 0.0F, -0.5F, 0.125F, -0.25F, phaseColor);
+            agoniaFishingQol$bobberRect(buffer, pose, -0.125F, -0.5F, 0.0F, -0.375F, phaseColor);
         });
         poseStack.popPose();
 
@@ -100,22 +117,19 @@ public abstract class FishingHookRendererMixin {
         ci.cancel();
     }
 
-    private static void agoniaFishingQol$bobberVertex(
+    private static void agoniaFishingQol$bobberRect(
         VertexConsumer builder,
         PoseStack.Pose pose,
-        int lightCoords,
-        float x,
-        int y,
-        int u,
-        int v,
+        float left,
+        float bottom,
+        float right,
+        float top,
         int color
     ) {
-        builder.addVertex(pose, x - 0.5F, y - 0.5F, 0.0F)
-            .setColor(color)
-            .setUv(u, v)
-            .setOverlay(OverlayTexture.NO_OVERLAY)
-            .setLight(lightCoords)
-            .setNormal(pose, 0.0F, 1.0F, 0.0F);
+        builder.addVertex(pose, left, bottom, 0.0F).setColor(color);
+        builder.addVertex(pose, right, bottom, 0.0F).setColor(color);
+        builder.addVertex(pose, right, top, 0.0F).setColor(color);
+        builder.addVertex(pose, left, top, 0.0F).setColor(color);
     }
 
     private static void agoniaFishingQol$stringVertex(

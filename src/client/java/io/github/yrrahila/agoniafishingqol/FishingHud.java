@@ -13,7 +13,6 @@ public final class FishingHud {
     private static final int READY = 0xFFFFD34E;
     private static final float WAIT_SCALE = 2.5F;
     private static final float BITE_SCALE = 3.6F;
-    private static final float BITE_TIMER_SCALE = 1.35F;
 
     private FishingHud() {
     }
@@ -22,7 +21,7 @@ public final class FishingHud {
         Minecraft client = Minecraft.getInstance();
         Font font = client.font;
         List<Line> lines = new ArrayList<>();
-        lines.add(new Line("Estimated: " + snapshot.estimatedBite() + "    " + snapshot.elapsedTime(), TEXT));
+        lines.add(new Line("Estimated: " + snapshot.estimatedBite(), TEXT));
         if (snapshot.rodDurability() >= 0 && snapshot.rodMaxDurability() > 0) {
             lines.add(new Line("Durability: " + snapshot.rodDurability() + " / " + snapshot.rodMaxDurability(), TEXT));
         }
@@ -39,16 +38,6 @@ public final class FishingHud {
 
         if (snapshot.biteReady()) {
             drawScaledCentered(graphics, font, "BITE!", GOOD, BITE_SCALE, graphics.guiHeight() / 2.0F - 58.0F);
-            if (!snapshot.biteWindowEstimate().isEmpty()) {
-                drawScaledCentered(
-                    graphics,
-                    font,
-                    snapshot.biteWindowEstimate(),
-                    TEXT,
-                    BITE_TIMER_SCALE,
-                    graphics.guiHeight() / 2.0F - 17.0F
-                );
-            }
         } else if (snapshot.status() == FishingSnapshot.BobberStatus.FISH_APPROACHING) {
             drawScaledCentered(graphics, font, "WAIT...", READY, WAIT_SCALE, graphics.guiHeight() / 2.0F - 52.0F);
         }

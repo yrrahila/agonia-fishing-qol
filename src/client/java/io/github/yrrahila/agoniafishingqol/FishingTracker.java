@@ -22,27 +22,30 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 public final class FishingTracker {
     private static final int LOW_DURABILITY_THRESHOLD = 10;
     private static final int APPROACH_STATE_GRACE_TICKS = 4;
-    private static final int MINIMUM_BITE_READY_TICKS = 20;
-    private static final int MAXIMUM_BITE_READY_TICKS = 40;
+    private static final int SETTLE_TICKS_BEFORE_ANCHOR = 12;
+    private static final float ANCHOR_BLEND_PER_TICK = 1.0F / 8.0F;
     private static final float APPROACH_SOUND_PITCH = 1.10F;
-    private static final float APPROACH_SOUND_VOLUME = 1.15F;
+    private static final float APPROACH_SOUND_VOLUME = 1.55F;
     private static final float BITE_SOUND_PITCH = 0.78F;
-    private static final float BITE_SOUND_VOLUME = 1.30F;
+    private static final float BITE_SOUND_VOLUME = 1.90F;
 
     private FishingHook activeHook;
-    private long castWaterEntryTick = -1L;
     private long biteCycleStartTick = -1L;
-    private long biteStartTick = -1L;
     private long approachingUntilTick = Long.MIN_VALUE;
     private boolean lastApproaching;
     private boolean lastBiting;
     private boolean durabilityWarningShown;
     private int lureLevelAtCast;
+    private int inWaterTicks;
+    private float previousAnchorWeight;
+    private float anchorWeight;
+    private @Nullable Vec3 visualAnchor;
     private @Nullable SimpleSoundInstance activeApproachSound;
     private @Nullable SimpleSoundInstance activeBiteSound;
     private FishingSnapshot snapshot = FishingSnapshot.NOT_CAST;
@@ -73,18 +76,28 @@ public final class FishingTracker {
         activeHook.setGlowingTag(true);
         long gameTime = client.level.getGameTime();
         boolean inWater = client.level.getFluidState(activeHook.blockPosition()).is(FluidTags.WATER);
+        boolean biting = ((FishingHookAccessor)activeHook).agoniaFishingQol$isBiting();
+
+        if (lastBiting && !biting) {
+            resetVisualAnchor();
+        }
         if (inWater) {
-            if (castWaterEntryTick < 0L) {
-                castWaterEntryTick = gameTime;
-            }
             if (biteCycleStartTick < 0L) {
                 biteCycleStartTick = gameTime;
             }
+            if (!biting) {
+                inWaterTicks++;
+                if (visualAnchor == null && inWaterTicks >= SETTLE_TICKS_BEFORE_ANCHOR) {
+                    visualAnchor = activeHook.position();
+                }
+            } else {
+                inWaterTicks = 0;
+            }
         } else {
             biteCycleStartTick = -1L;
+            resetVisualAnchor();
         }
 
-        boolean biting = ((FishingHookAccessor)activeHook).agoniaFishingQol$isBiting();
         boolean approaching = !biting && gameTime <= approachingUntilTick;
 
         if (approaching && !lastApproaching) {
@@ -97,28 +110,32 @@ public final class FishingTracker {
             stopApproachSound(client);
             approachingUntilTick = Long.MIN_VALUE;
             if (!lastBiting) {
-                biteStartTick = gameTime;
                 playBiteSound(client);
             }
         } else {
             stopBiteSound(client);
-            biteStartTick = -1L;
             if (lastBiting) {
                 biteCycleStartTick = inWater ? gameTime : -1L;
             }
         }
 
-        FishingVisualState.publish(activeHook, approaching, biting);
+        updateAnchorWeight(!biting && visualAnchor != null);
+        FishingVisualState.publish(
+            activeHook,
+            approaching,
+            biting,
+            visualAnchor,
+            previousAnchorWeight,
+            anchorWeight
+        );
         BobberStatus status = biting
             ? BobberStatus.BITE_READY
             : approaching ? BobberStatus.FISH_APPROACHING : BobberStatus.WAITING;
         snapshot = new FishingSnapshot(
             status,
             estimateBite(client, gameTime, inWater, biting),
-            elapsedSinceWaterEntry(gameTime),
             durability.remaining(),
             durability.maximum(),
-            estimateBiteWindow(gameTime, biting),
             biting
         );
         lastApproaching = approaching;
@@ -142,11 +159,7 @@ public final class FishingTracker {
             return false;
         }
 
-        if (isApproachBubblePacket(packet)) {
-            return approachBubbleBelongsToOwnHook(client, ownHook, packet);
-        }
-
-        if (isCloseBiteBubblePacket(packet) || isCloseBiteFishingPacket(packet)) {
+        if (isCloseBiteFishingPacket(packet)) {
             return closeFishingEffectBelongsToOwnHook(client, ownHook, packet);
         }
 
@@ -162,26 +175,6 @@ public final class FishingTracker {
             && packet.getCount() == 0
             && approximately(packet.getMaxSpeed(), 1.0F)
             && approximately(packet.getYDist(), 0.01F);
-    }
-
-    private boolean isApproachBubblePacket(ClientboundLevelParticlesPacket packet) {
-        double horizontalSpread = Mth.square(packet.getXDist()) + Mth.square(packet.getZDist());
-        return packet.getParticle().getType() == ParticleTypes.BUBBLE
-            && packet.getCount() == 1
-            && approximately(packet.getMaxSpeed(), 0.0F)
-            && approximately(packet.getYDist(), 0.1F)
-            && horizontalSpread > 0.8
-            && horizontalSpread < 1.2;
-    }
-
-    private boolean isCloseBiteBubblePacket(ClientboundLevelParticlesPacket packet) {
-        return packet.getParticle().getType() == ParticleTypes.BUBBLE
-            && packet.getCount() >= 1
-            && approximately(packet.getYDist(), 0.0F)
-            && approximately(packet.getMaxSpeed(), 0.2F)
-            && packet.getXDist() > 0.0F
-            && packet.getXDist() <= 0.5F
-            && approximately(packet.getXDist(), packet.getZDist());
     }
 
     private boolean isCloseBiteFishingPacket(ClientboundLevelParticlesPacket packet) {
@@ -223,32 +216,6 @@ public final class FishingTracker {
                 continue;
             }
             if (trajectoryAlignmentError(hook, packet) <= ownError + 0.08) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean approachBubbleBelongsToOwnHook(
-        Minecraft client,
-        FishingHook ownHook,
-        ClientboundLevelParticlesPacket packet
-    ) {
-        if (!isFishingEffectCandidate(ownHook, packet, 0.0, 8.25)) {
-            return false;
-        }
-
-        double ownError = radialAlignmentError(ownHook, packet);
-        if (ownError > 0.15) {
-            return false;
-        }
-
-        AABB search = particleSearchBox(packet, 9.25);
-        for (FishingHook hook : client.level.getEntitiesOfClass(FishingHook.class, search, hook -> !hook.isRemoved())) {
-            if (hook == ownHook || !isFishingEffectCandidate(hook, packet, 0.0, 8.25)) {
-                continue;
-            }
-            if (radialAlignmentError(hook, packet) <= ownError + 0.08) {
                 return false;
             }
         }
@@ -331,19 +298,6 @@ public final class FishingTracker {
             return Double.POSITIVE_INFINITY;
         }
         return Math.abs(radialX * tangentX + radialZ * tangentZ) / denominator;
-    }
-
-    private double radialAlignmentError(FishingHook hook, ClientboundLevelParticlesPacket packet) {
-        double radialX = hook.getX() - packet.getX();
-        double radialZ = hook.getZ() - packet.getZ();
-        double spreadX = packet.getXDist();
-        double spreadZ = packet.getZDist();
-        double denominator = Math.sqrt(radialX * radialX + radialZ * radialZ)
-            * Math.sqrt(spreadX * spreadX + spreadZ * spreadZ);
-        if (denominator < 1.0E-6) {
-            return Double.POSITIVE_INFINITY;
-        }
-        return 1.0 - Math.abs(radialX * spreadX + radialZ * spreadZ) / denominator;
     }
 
     private AABB particleSearchBox(ClientboundLevelParticlesPacket packet, double radius) {
@@ -490,23 +444,6 @@ public final class FishingTracker {
         return String.format(Locale.ROOT, "%d-%ds", (int)Math.floor(minSeconds), (int)Math.ceil(maxSeconds));
     }
 
-    private String elapsedSinceWaterEntry(long gameTime) {
-        if (castWaterEntryTick < 0L) {
-            return "--";
-        }
-        return String.format(Locale.ROOT, "%.1fs", Math.max(0L, gameTime - castWaterEntryTick) / 20.0);
-    }
-
-    private String estimateBiteWindow(long gameTime, boolean biting) {
-        if (!biting || biteStartTick < 0L) {
-            return "";
-        }
-        long elapsed = Math.max(0L, gameTime - biteStartTick);
-        double minimum = Math.max(0L, MINIMUM_BITE_READY_TICKS - elapsed) / 20.0;
-        double maximum = Math.max(0L, MAXIMUM_BITE_READY_TICKS - elapsed) / 20.0;
-        return String.format(Locale.ROOT, "~%.1f-%.1fs left", minimum, maximum);
-    }
-
     private boolean approximately(float actual, float expected) {
         return Math.abs(actual - expected) < 0.0001F;
     }
@@ -523,12 +460,28 @@ public final class FishingTracker {
         stopBiteSound(client);
         FishingVisualState.clear();
         activeHook = null;
-        castWaterEntryTick = -1L;
         biteCycleStartTick = -1L;
-        biteStartTick = -1L;
         approachingUntilTick = Long.MIN_VALUE;
         lastApproaching = false;
         lastBiting = false;
+        resetVisualAnchor();
+    }
+
+    private void updateAnchorWeight(boolean anchored) {
+        previousAnchorWeight = anchorWeight;
+        float target = anchored ? 1.0F : 0.0F;
+        anchorWeight = Mth.clamp(
+            anchorWeight + Mth.clamp(target - anchorWeight, -ANCHOR_BLEND_PER_TICK, ANCHOR_BLEND_PER_TICK),
+            0.0F,
+            1.0F
+        );
+    }
+
+    private void resetVisualAnchor() {
+        inWaterTicks = 0;
+        previousAnchorWeight = 0.0F;
+        anchorWeight = 0.0F;
+        visualAnchor = null;
     }
 
     private void reset(Minecraft client) {

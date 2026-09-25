@@ -29,12 +29,11 @@ The distributable JAR is written to `build/libs/`.
 - One action-bar warning when a held fishing rod reaches 10 durability or less.
 - A large yellow `WAIT...` alert and short note-block sound when the local hook's real server-sent fish trail begins.
 - A larger green `BITE!` alert and lower-pitched challenge-complete sound, played once when the bite becomes ready.
-- A compact middle-right HUD with the estimated bite range, elapsed in-water cast time, and exact current/maximum rod durability; it contains no textual fishing-state label.
-- A deliberately approximate bite-ready range under `BITE!`, based on vanilla's private 20-40 tick server window and the client-observed bite start.
+- A compact middle-right HUD with the estimated bite range and exact current/maximum rod durability; it contains no elapsed timer or textual fishing-state label.
 - A deliberately labelled estimated bite-time range based on vanilla's random wait bounds, Lure, rain, and sky exposure.
-- A client-only glow and matching red (waiting), yellow (approaching), or green (bite-ready) bobber and slightly thicker line.
-- Vanilla entity interpolation for smooth bobber and line movement; no fixed render anchor or physics changes.
-- A denser, larger version of the vanilla fishing wake for the local player's approach trail, while attributable idle splashes and fishing bubbles are suppressed.
+- A client-only glow and matching solid red (waiting), yellow (approaching), or green (bite-ready) bobber and clearly thicker line.
+- A render-only stable waiting anchor that blends in and out over eight ticks, including between-frame interpolation, while fishing logic continues to use the real entity position.
+- All ordinary `BUBBLE` particles are hidden client-side, while the separate `FISHING` approach wake remains visible and enhanced; bubble-column mechanics and their distinct particles are unchanged.
 - Static vanilla water sprite frames, with no changes to water blocks, physics, movement, or server state.
 
 ## Multiplayer safety
