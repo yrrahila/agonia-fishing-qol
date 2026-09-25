@@ -30,7 +30,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 public final class FishingTracker {
-    private static final int LOW_DURABILITY_THRESHOLD = 10;
+    static final int LOW_DURABILITY_THRESHOLD = 10;
     private static final int APPROACH_STATE_GRACE_TICKS = 4;
     private static final int WATER_CONTACT_GRACE_TICKS = 6;
     private static final int SETTLE_TICKS_BEFORE_ANCHOR = 12;
@@ -521,12 +521,7 @@ public final class FishingTracker {
 
         double minSeconds = minimumTicks / 20.0;
         double maxSeconds = maximumTicks / 20.0;
-        int minimumDisplaySeconds = (int)Math.floor(minSeconds);
-        if (lureLevelAtCast >= 3) {
-            minimumDisplaySeconds = rainBoost ? 1 : 0;
-        } else if (rainBoost) {
-            minimumDisplaySeconds = Math.max(1, minimumDisplaySeconds);
-        }
+        int minimumDisplaySeconds = Math.max(1, (int)Math.floor(minSeconds));
         return String.format(
             Locale.ROOT,
             "%d-%ds",

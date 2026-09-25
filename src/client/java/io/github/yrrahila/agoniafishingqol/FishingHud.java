@@ -13,6 +13,7 @@ public final class FishingHud {
     private static final int TEXT = 0xFFF2F2F2;
     private static final int GOOD = 0xFF55FF55;
     private static final int READY = 0xFFFFD34E;
+    private static final int BAD = 0xFFFF5555;
     private static final float WAIT_SCALE = 2.5F;
     private static final float BITE_SCALE = 3.6F;
 
@@ -29,11 +30,8 @@ public final class FishingHud {
         List<Line> lines = new ArrayList<>();
         lines.add(new Line(Component.literal("Agonia Fishing QoL").withStyle(ChatFormatting.BOLD), TEXT));
         lines.add(new Line(Component.literal("Cast: " + snapshot.elapsedTime()), TEXT));
-        lines.add(new Line(Component.literal("Estimated: " + snapshot.estimatedBite()), TEXT));
-        lines.add(new Line(
-            Component.literal("Durability: " + snapshot.rodDurability() + " / " + snapshot.rodMaxDurability()),
-            TEXT
-        ));
+        lines.add(new Line(estimatedLine(snapshot), TEXT));
+        lines.add(new Line(durabilityLine(snapshot), TEXT));
 
         int width = lines.stream().mapToInt(line -> font.width(line.text())).max().orElse(0);
         int height = lines.size() * 10;
@@ -50,6 +48,25 @@ public final class FishingHud {
         } else if (snapshot.status() == FishingSnapshot.BobberStatus.FISH_APPROACHING) {
             drawScaledCentered(graphics, font, "INCOMING...", READY, WAIT_SCALE, graphics.guiHeight() / 2.0F - 52.0F);
         }
+    }
+
+    private static Component estimatedLine(FishingSnapshot snapshot) {
+        Component value = switch (snapshot.status()) {
+            case FISH_APPROACHING -> coloredValue("Incoming", READY);
+            case BITE_READY -> coloredValue("Ready", GOOD);
+            default -> Component.literal(snapshot.estimatedBite());
+        };
+        return Component.literal("Estimated: ").append(value);
+    }
+
+    private static Component durabilityLine(FishingSnapshot snapshot) {
+        String value = snapshot.rodDurability() + " / " + snapshot.rodMaxDurability();
+        boolean low = snapshot.rodDurability() <= FishingTracker.LOW_DURABILITY_THRESHOLD;
+        return Component.literal("Durability: ").append(low ? coloredValue(value, BAD) : Component.literal(value));
+    }
+
+    private static Component coloredValue(String text, int color) {
+        return Component.literal(text).withStyle(style -> style.withColor(color & 0xFFFFFF));
     }
 
     private static void drawScaledCentered(

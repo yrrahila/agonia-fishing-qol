@@ -37,7 +37,7 @@ The distributable JAR is written to `build/libs/`.
 - A render-only stable waiting anchor that blends in and out over eight ticks, including between-frame interpolation, while fishing logic continues to use the real entity position.
 - The verified local-player `FISHING` approach wake is replaced client-side with a managed yellow trail. Every still-visible segment is recolored green as soon as the bite state begins, while other players' fishing particles are left unchanged.
 - All ordinary `BUBBLE` particles are hidden client-side, and local `SPLASH`, `UNDERWATER`, and `BUBBLE_POP` particles within four blocks of the player's bobber are removed. Bubble-column mechanics and other distinct world particles are unchanged.
-- Uniform, highly translucent still/flow water textures produce a clearer, smooth, biome-tinted surface while keeping underwater bobber colors vivid, without shader, framebuffer, fog, physics, movement, or server-state changes.
+- Uniform, fully transparent still/flow water textures preserve the smooth clear-water replacement while maximizing underwater bobber visibility, without shader, framebuffer, fog, physics, movement, or server-state changes.
 
 ## Multiplayer safety
 
