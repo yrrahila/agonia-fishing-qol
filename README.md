@@ -17,6 +17,7 @@ Author: Yxad
 - Fabric Loader 0.19.3 or newer
 - Fabric API 0.156.0+26.2 or newer compatible 26.2 build
 - Java 25
+- Mod Menu 20.0.3 is optional and provides access to the Bite sound settings screen.
 
 ## Build
 
@@ -28,7 +29,7 @@ The distributable JAR is written to `build/libs/`.
 
 ## Included QoL features
 
-- A small vanilla-style Bite sound screen opened with the rebindable `F8` key, with six persistent built-in alert presets and a short preview.
+- An optional Mod Menu integration that opens a small vanilla-style Bite sound screen with six persistent built-in alert presets and a short preview.
 - One action-bar warning when a held fishing rod reaches 10 durability or less.
 - A large yellow `INCOMING...` alert and short note-block sound when the local hook's real server-sent fish trail begins.
 - A larger green `BITE!` alert, a 35% larger bite-state bobber, and the selected alert preset repeated at a controlled interval for the full bite-ready phase.
