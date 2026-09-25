@@ -3,7 +3,7 @@
   "id": "agonia_fishing_qol",
   "version": "${version}",
   "name": "Agonia Fishing QoL",
-  "description": "Strictly client-side, notification-only fishing quality-of-life tools for multiplayer.",
+  "description": "Strictly client-side, notification-only fishing quality-of-life tool for Agonia.",
   "authors": [
     "Yxad"
   ],

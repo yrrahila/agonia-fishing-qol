@@ -41,11 +41,11 @@ public final class FishingTracker {
     private static final float BITE_SOUND_VOLUME = 1.60F;
     private static final float TRAIL_SCALE = 2.25F;
     private static final float TRAIL_YELLOW_RED = 1.0F;
-    private static final float TRAIL_YELLOW_GREEN = 0.82F;
-    private static final float TRAIL_YELLOW_BLUE = 0.08F;
-    private static final float TRAIL_GREEN_RED = 0.20F;
+    private static final float TRAIL_YELLOW_GREEN = 1.0F;
+    private static final float TRAIL_YELLOW_BLUE = 0.0F;
+    private static final float TRAIL_GREEN_RED = 0.0F;
     private static final float TRAIL_GREEN_GREEN = 1.0F;
-    private static final float TRAIL_GREEN_BLUE = 0.24F;
+    private static final float TRAIL_GREEN_BLUE = 0.0F;
 
     private FishingHook activeHook;
     private long cycleStartTick = -1L;
