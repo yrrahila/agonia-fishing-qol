@@ -32,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 public final class FishingTracker {
     private static final int LOW_DURABILITY_THRESHOLD = 10;
     private static final int APPROACH_STATE_GRACE_TICKS = 4;
+    private static final int WATER_CONTACT_GRACE_TICKS = 6;
     private static final int SETTLE_TICKS_BEFORE_ANCHOR = 12;
     private static final float ANCHOR_BLEND_PER_TICK = 1.0F / 8.0F;
     private static final float APPROACH_SOUND_PITCH = 1.10F;
@@ -54,6 +55,7 @@ public final class FishingTracker {
     private boolean durabilityWarningShown;
     private int lureLevelAtCast;
     private int inWaterTicks;
+    private int waterContactGraceTicks;
     private float previousAnchorWeight;
     private float anchorWeight;
     private @Nullable Vec3 visualAnchor;
@@ -88,7 +90,7 @@ public final class FishingTracker {
 
         activeHook.setGlowingTag(true);
         long gameTime = client.level.getGameTime();
-        boolean inWater = client.level.getFluidState(activeHook.blockPosition()).is(FluidTags.WATER);
+        boolean inWater = updateWaterContact(client);
         boolean biting = ((FishingHookAccessor)activeHook).agoniaFishingQol$isBiting();
 
         if (lastBiting && !biting) {
@@ -499,7 +501,7 @@ public final class FishingTracker {
 
     private String estimateBite(Minecraft client, boolean inWater) {
         if (!inWater) {
-            return "--";
+            return "-";
         }
 
         int lureReduction = Math.max(0, lureLevelAtCast) * 100;
@@ -540,6 +542,20 @@ public final class FishingTracker {
         return String.format(Locale.ROOT, "%.1fs", Math.max(0L, gameTime - cycleStartTick) / 20.0);
     }
 
+    private boolean updateWaterContact(Minecraft client) {
+        var hookPosition = activeHook.blockPosition();
+        boolean touchingWater = activeHook.isInWater()
+            || client.level.getFluidState(hookPosition).is(FluidTags.WATER)
+            || client.level.getFluidState(hookPosition.below()).is(FluidTags.WATER);
+
+        if (touchingWater) {
+            waterContactGraceTicks = WATER_CONTACT_GRACE_TICKS;
+        } else if (waterContactGraceTicks > 0) {
+            waterContactGraceTicks--;
+        }
+        return touchingWater || waterContactGraceTicks > 0;
+    }
+
     private boolean approximately(float actual, float expected) {
         return Math.abs(actual - expected) < 0.0001F;
     }
@@ -561,6 +577,7 @@ public final class FishingTracker {
         approachingUntilTick = Long.MIN_VALUE;
         lastApproaching = false;
         lastBiting = false;
+        waterContactGraceTicks = 0;
         resetVisualAnchor();
     }
 
