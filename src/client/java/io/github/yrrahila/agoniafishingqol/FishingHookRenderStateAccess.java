@@ -1,7 +1,6 @@
 package io.github.yrrahila.agoniafishingqol;
 
 import java.util.List;
-import net.minecraft.world.phys.Vec3;
 
 /** Duck interface mixed into the fishing-hook render state; kept outside the reserved mixin package. */
 public interface FishingHookRenderStateAccess {
@@ -17,7 +16,11 @@ public interface FishingHookRenderStateAccess {
 
     boolean agoniaFishingQol$isBiting();
 
-    void agoniaFishingQol$setTrailPositions(List<Vec3> positions);
+    void agoniaFishingQol$setBiteScaleProgress(float progress);
 
-    List<Vec3> agoniaFishingQol$trailPositions();
+    float agoniaFishingQol$biteScaleProgress();
+
+    void agoniaFishingQol$setTrailSpans(List<FishingVisualState.TrailSpan> spans);
+
+    List<FishingVisualState.TrailSpan> agoniaFishingQol$trailSpans();
 }

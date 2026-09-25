@@ -1,9 +1,9 @@
 package io.github.yrrahila.agoniafishingqol.mixin.client;
 
 import io.github.yrrahila.agoniafishingqol.FishingHookRenderStateAccess;
+import io.github.yrrahila.agoniafishingqol.FishingVisualState;
 import java.util.List;
 import net.minecraft.client.renderer.entity.state.FishingHookRenderState;
-import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
@@ -19,7 +19,10 @@ public final class FishingHookRenderStateMixin implements FishingHookRenderState
     private boolean agoniaFishingQol$biting;
 
     @Unique
-    private List<Vec3> agoniaFishingQol$trailPositions = List.of();
+    private float agoniaFishingQol$biteScaleProgress;
+
+    @Unique
+    private List<FishingVisualState.TrailSpan> agoniaFishingQol$trailSpans = List.of();
 
     @Override
     public void agoniaFishingQol$setOwnHook(boolean ownHook) {
@@ -52,12 +55,22 @@ public final class FishingHookRenderStateMixin implements FishingHookRenderState
     }
 
     @Override
-    public void agoniaFishingQol$setTrailPositions(List<Vec3> positions) {
-        this.agoniaFishingQol$trailPositions = positions;
+    public void agoniaFishingQol$setBiteScaleProgress(float progress) {
+        this.agoniaFishingQol$biteScaleProgress = progress;
     }
 
     @Override
-    public List<Vec3> agoniaFishingQol$trailPositions() {
-        return this.agoniaFishingQol$trailPositions;
+    public float agoniaFishingQol$biteScaleProgress() {
+        return this.agoniaFishingQol$biteScaleProgress;
+    }
+
+    @Override
+    public void agoniaFishingQol$setTrailSpans(List<FishingVisualState.TrailSpan> spans) {
+        this.agoniaFishingQol$trailSpans = spans;
+    }
+
+    @Override
+    public List<FishingVisualState.TrailSpan> agoniaFishingQol$trailSpans() {
+        return this.agoniaFishingQol$trailSpans;
     }
 }

@@ -30,17 +30,17 @@ import org.jspecify.annotations.Nullable;
 
 public final class FishingTracker {
     static final int LOW_DURABILITY_THRESHOLD = 10;
-    private static final int APPROACH_STATE_GRACE_TICKS = 4;
     private static final int WATER_CONTACT_GRACE_TICKS = 6;
     private static final int SETTLE_TICKS_BEFORE_ANCHOR = 12;
-    private static final float ANCHOR_BLEND_PER_TICK = 1.0F / 8.0F;
+    private static final float ANCHOR_BLEND_PER_TICK = 0.25F;
+    private static final float BOBBER_SCALE_BLEND_PER_TICK = 0.25F;
     private static final float APPROACH_SOUND_PITCH = 1.10F;
     private static final float APPROACH_SOUND_VOLUME = 1.55F;
-    private static final int TRAIL_LIFETIME_TICKS = 20;
+    private static final int TRAIL_LIFETIME_TICKS = 24;
 
     private FishingHook activeHook;
     private long cycleStartTick = -1L;
-    private volatile long approachingUntilTick = Long.MIN_VALUE;
+    private boolean approachLatched;
     private boolean lastApproaching;
     private boolean lastBiting;
     private boolean durabilityWarningShown;
@@ -49,6 +49,9 @@ public final class FishingTracker {
     private int waterContactGraceTicks;
     private float previousAnchorWeight;
     private float anchorWeight;
+    private boolean anchorTargetActive;
+    private float previousBiteScaleProgress;
+    private float biteScaleProgress;
     private @Nullable Vec3 visualAnchor;
     private @Nullable SimpleSoundInstance activeApproachSound;
     private final List<TrackedTrailSegment> activeTrailSegments = new ArrayList<>();
@@ -93,24 +96,20 @@ public final class FishingTracker {
         drainPendingTrail(client);
 
         if (lastBiting && !biting) {
-            resetVisualAnchor();
+            approachLatched = false;
+            resetVisualAnchorImmediately();
             cycleStartTick = gameTime;
             lureLevelAtCast = readLureLevel(client, heldRod);
         }
-        if (inWater) {
-            if (!biting) {
-                inWaterTicks++;
-                if (visualAnchor == null && inWaterTicks >= SETTLE_TICKS_BEFORE_ANCHOR) {
-                    visualAnchor = activeHook.position();
-                }
-            } else {
-                inWaterTicks = 0;
-            }
-        } else {
-            resetVisualAnchor();
-        }
 
-        boolean approaching = !biting && gameTime <= approachingUntilTick;
+        if (!inWater) {
+            // Losing valid water contact beyond the short contact grace is reliable evidence
+            // that the current approach can no longer continue.
+            approachLatched = false;
+        }
+        updateVisualAnchor(inWater, biting);
+
+        boolean approaching = approachLatched && !biting && inWater;
         tickActiveTrail(approaching, biting);
 
         if (approaching && !lastApproaching) {
@@ -121,7 +120,7 @@ public final class FishingTracker {
 
         if (biting) {
             stopApproachSound(client);
-            approachingUntilTick = Long.MIN_VALUE;
+            approachLatched = false;
         }
         AgoniaFishingQolClient.biteSoundController().tickBite(
             client,
@@ -130,7 +129,8 @@ public final class FishingTracker {
             AgoniaFishingQolClient.config().alertVolume()
         );
 
-        updateAnchorWeight(!biting && visualAnchor != null);
+        updateAnchorWeight();
+        updateBiteScaleProgress(biting);
         FishingVisualState.publish(
             activeHook,
             approaching,
@@ -138,6 +138,8 @@ public final class FishingTracker {
             visualAnchor,
             previousAnchorWeight,
             anchorWeight,
+            previousBiteScaleProgress,
+            biteScaleProgress,
             trailSnapshot()
         );
         BobberStatus status = biting
@@ -168,7 +170,9 @@ public final class FishingTracker {
                     && !ownHook.isRemoved()
                     && ownHook.getPlayerOwner() == client.player
                     && approachTrailBelongsToOwnHook(client, ownHook, packet)) {
-                    approachingUntilTick = client.level.getGameTime() + APPROACH_STATE_GRACE_TICKS;
+                    // This exact vanilla fishing-wake signature is start evidence only. Once
+                    // accepted for the local hook, Incoming remains latched across packet gaps.
+                    approachLatched = true;
                     addApproachTrail(client, ownHook, packet);
                 }
             }
@@ -594,25 +598,59 @@ public final class FishingTracker {
         FirstPersonRodVisuals.clear();
         activeHook = null;
         cycleStartTick = -1L;
-        approachingUntilTick = Long.MIN_VALUE;
+        approachLatched = false;
         lastApproaching = false;
         lastBiting = false;
         waterContactGraceTicks = 0;
-        resetVisualAnchor();
+        resetVisualAnchorImmediately();
+        previousBiteScaleProgress = 0.0F;
+        biteScaleProgress = 0.0F;
     }
 
-    private void updateAnchorWeight(boolean anchored) {
+    private void updateVisualAnchor(boolean inWater, boolean biting) {
+        if (inWater && !biting) {
+            inWaterTicks++;
+            if (visualAnchor == null && inWaterTicks >= SETTLE_TICKS_BEFORE_ANCHOR) {
+                visualAnchor = activeHook.position();
+            }
+            anchorTargetActive = visualAnchor != null;
+            return;
+        }
+
+        inWaterTicks = 0;
+        anchorTargetActive = false;
+    }
+
+    private void updateAnchorWeight() {
         previousAnchorWeight = anchorWeight;
-        float target = anchored ? 1.0F : 0.0F;
+        float target = anchorTargetActive ? 1.0F : 0.0F;
         anchorWeight = Mth.clamp(
             anchorWeight + Mth.clamp(target - anchorWeight, -ANCHOR_BLEND_PER_TICK, ANCHOR_BLEND_PER_TICK),
             0.0F,
             1.0F
         );
+        if (!anchorTargetActive && anchorWeight <= 0.0F) {
+            visualAnchor = null;
+        }
     }
 
-    private void resetVisualAnchor() {
+    private void updateBiteScaleProgress(boolean biting) {
+        previousBiteScaleProgress = biteScaleProgress;
+        float target = biting ? 1.0F : 0.0F;
+        biteScaleProgress = Mth.clamp(
+            biteScaleProgress + Mth.clamp(
+                target - biteScaleProgress,
+                -BOBBER_SCALE_BLEND_PER_TICK,
+                BOBBER_SCALE_BLEND_PER_TICK
+            ),
+            0.0F,
+            1.0F
+        );
+    }
+
+    private void resetVisualAnchorImmediately() {
         inWaterTicks = 0;
+        anchorTargetActive = false;
         previousAnchorWeight = 0.0F;
         anchorWeight = 0.0F;
         visualAnchor = null;

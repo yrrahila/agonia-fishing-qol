@@ -32,6 +32,7 @@ public abstract class FishingHookRendererMixin {
     private static final float BITE_BOBBER_SCALE = 1.35F;
     private static final float LINE_WIDTH_MULTIPLIER = 2.0F;
     private static final float TRAIL_HALF_SIZE = 0.055F;
+    private static final int LINE_SEGMENTS = 24;
 
     @Inject(
         method = "extractRenderState(Lnet/minecraft/world/entity/projectile/FishingHook;Lnet/minecraft/client/renderer/entity/state/FishingHookRenderState;F)V",
@@ -48,7 +49,8 @@ public abstract class FishingHookRendererMixin {
             extension.agoniaFishingQol$setOwnHook(false);
             extension.agoniaFishingQol$setApproaching(false);
             extension.agoniaFishingQol$setBiting(false);
-            extension.agoniaFishingQol$setTrailPositions(java.util.List.of());
+            extension.agoniaFishingQol$setBiteScaleProgress(0.0F);
+            extension.agoniaFishingQol$setTrailSpans(java.util.List.of());
             return;
         }
 
@@ -58,8 +60,11 @@ public abstract class FishingHookRendererMixin {
         extension.agoniaFishingQol$setOwnHook(ownHook);
         extension.agoniaFishingQol$setApproaching(approaching);
         extension.agoniaFishingQol$setBiting(biting);
-        extension.agoniaFishingQol$setTrailPositions(
-            ownHook ? FishingVisualState.interpolatedTrailPositions(partialTicks) : java.util.List.of()
+        extension.agoniaFishingQol$setBiteScaleProgress(
+            ownHook ? FishingVisualState.interpolatedBiteScaleProgress(partialTicks) : 0.0F
+        );
+        extension.agoniaFishingQol$setTrailSpans(
+            ownHook ? FishingVisualState.interpolatedTrailSpans(partialTicks) : java.util.List.of()
         );
 
         Minecraft client = Minecraft.getInstance();
@@ -67,7 +72,9 @@ public abstract class FishingHookRendererMixin {
             ? FirstPersonRodVisuals.currentWorldTip()
             : null;
         if (firstPersonRodTip != null) {
-            Vec3 actualHookPosition = entity.getPosition(partialTicks).add(0.0, 0.25, 0.0);
+            // Use the renderer's already-interpolated hook coordinates so both line endpoints
+            // are sampled in the same frame and coordinate space.
+            Vec3 actualHookPosition = new Vec3(state.x, state.y + 0.25, state.z);
             state.lineOriginOffset = firstPersonRodTip.subtract(actualHookPosition);
         }
 
@@ -114,7 +121,11 @@ public abstract class FishingHookRendererMixin {
         int bobberColor = biting ? BITE_BOBBER_COLOR : approaching
             ? APPROACHING_BOBBER_COLOR
             : WAITING_BOBBER_COLOR;
-        float bobberScale = biting ? BITE_BOBBER_SCALE : NORMAL_BOBBER_SCALE;
+        float bobberScale = Mth.lerp(
+            extension.agoniaFishingQol$biteScaleProgress(),
+            NORMAL_BOBBER_SCALE,
+            BITE_BOBBER_SCALE
+        );
 
         poseStack.pushPose();
         poseStack.pushPose();
@@ -127,21 +138,24 @@ public abstract class FishingHookRendererMixin {
         });
         poseStack.popPose();
 
-        if (!extension.agoniaFishingQol$trailPositions().isEmpty()) {
+        if (!extension.agoniaFishingQol$trailSpans().isEmpty()) {
             submitNodeCollector.submitCustomGeometry(poseStack, RenderTypes.debugQuads(), (pose, buffer) -> {
-                for (Vec3 position : extension.agoniaFishingQol$trailPositions()) {
-                    float x = (float)(position.x - state.x);
-                    float y = (float)(position.y - state.y);
-                    float z = (float)(position.z - state.z);
+                for (FishingVisualState.TrailSpan span : extension.agoniaFishingQol$trailSpans()) {
+                    float startX = (float)(span.start().x - state.x);
+                    float startY = (float)(span.start().y - state.y);
+                    float startZ = (float)(span.start().z - state.z);
+                    float endX = (float)(span.end().x - state.x);
+                    float endY = (float)(span.end().y - state.y);
+                    float endZ = (float)(span.end().z - state.z);
                     agoniaFishingQol$cuboid(
                         buffer,
                         pose,
-                        x - TRAIL_HALF_SIZE,
-                        y - TRAIL_HALF_SIZE * 0.35F,
-                        z - TRAIL_HALF_SIZE,
-                        x + TRAIL_HALF_SIZE,
-                        y + TRAIL_HALF_SIZE * 0.35F,
-                        z + TRAIL_HALF_SIZE,
+                        Math.min(startX, endX) - TRAIL_HALF_SIZE,
+                        Math.min(startY, endY) - TRAIL_HALF_SIZE * 0.35F,
+                        Math.min(startZ, endZ) - TRAIL_HALF_SIZE,
+                        Math.max(startX, endX) + TRAIL_HALF_SIZE,
+                        Math.max(startY, endY) + TRAIL_HALF_SIZE * 0.35F,
+                        Math.max(startZ, endZ) + TRAIL_HALF_SIZE,
                         lineColor
                     );
                 }
@@ -154,9 +168,9 @@ public abstract class FishingHookRendererMixin {
         float width = Minecraft.getInstance().gameRenderer.gameRenderState().windowRenderState.appropriateLineWidth
             * LINE_WIDTH_MULTIPLIER;
         submitNodeCollector.submitCustomGeometry(poseStack, RenderTypes.lines(), (pose, buffer) -> {
-            for (int i = 0; i < 16; i++) {
-                float a0 = (float)i / 16.0F;
-                float a1 = (float)(i + 1) / 16.0F;
+            for (int i = 0; i < LINE_SEGMENTS; i++) {
+                float a0 = (float)i / LINE_SEGMENTS;
+                float a1 = (float)(i + 1) / LINE_SEGMENTS;
                 agoniaFishingQol$stringVertex(xa, ya, za, buffer, pose, a0, a1, width, lineColor);
                 agoniaFishingQol$stringVertex(xa, ya, za, buffer, pose, a1, a0, width, lineColor);
             }

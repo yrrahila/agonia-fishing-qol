@@ -38,8 +38,9 @@ The distributable JAR is written to `build/libs/`.
 - A static numerical bite-time range based on vanilla's random wait bounds, Lure, rain, and sky exposure. It changes to `Incoming` only for the verified approach trail and `Ready` only for the synchronized bite state.
 - A client-only glow and matching solid red (waiting), yellow (approaching), or green (bite-ready) bobber and clearly thicker line.
 - An item-only first-person transform renders fishing rods at 82% scale in either hand without changing GUI item models.
-- A render-only stable waiting anchor that blends in and out over eight ticks, including between-frame interpolation, while fishing logic continues to use the real entity position.
-- Vanilla fishing wakes are hidden client-side and replaced only for the verified local-player hook with a full-bright yellow trail. Every still-visible segment is recolored full-bright green as soon as the bite state begins.
+- A render-only stable waiting anchor that blends in and out over four ticks, including between-frame interpolation, while fishing logic continues to use the real entity position.
+- Vanilla fishing wakes are hidden client-side and replaced only for the verified local-player hook with a full-bright yellow trail. The first confidently matched wake latches Incoming until bite or a genuine cycle invalidation, so intermittent vanilla particle gaps cannot switch the presentation back to Waiting.
+- Trail motion is interpolated between ticks and rendered as short continuous spans instead of disconnected points. Every still-visible span is recolored full-bright green as soon as the bite state begins.
 - All ordinary `BUBBLE` particles are hidden client-side, and local `SPLASH`, `UNDERWATER`, and `BUBBLE_POP` particles within four blocks of the player's bobber are removed. Bubble-column mechanics and other distinct world particles are unchanged.
 - Uniform, transparent still/flow water textures use alpha 32 to preserve the smooth clear-water replacement while keeping underwater bobber colors highly visible, without shader, framebuffer, fog, physics, movement, or server-state changes.
 
