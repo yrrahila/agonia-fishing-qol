@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "io.github.yrrahila.agoniafishingqol.mixin.client",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "FishingHookAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
+

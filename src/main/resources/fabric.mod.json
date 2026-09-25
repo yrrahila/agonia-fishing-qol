@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "agonia_fishing_qol",
+  "version": "${version}",
+  "name": "Agonia Fishing QoL",
+  "description": "Strictly client-side, notification-only fishing quality-of-life tools for multiplayer.",
+  "authors": [
+    "yrrahila"
+  ],
+  "contact": {
+    "sources": "https://github.com/yrrahila/agonia-fishing-qol"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "io.github.yrrahila.agoniafishingqol.AgoniaFishingQolClient"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "agonia_fishing_qol.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": ">=0.161.0"
+  }
+}
+
