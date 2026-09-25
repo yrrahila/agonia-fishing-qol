@@ -11,6 +11,9 @@ public final class FishingHookRenderStateMixin implements FishingHookRenderState
     private boolean agoniaFishingQol$ownHook;
 
     @Unique
+    private boolean agoniaFishingQol$approaching;
+
+    @Unique
     private boolean agoniaFishingQol$biting;
 
     @Override
@@ -21,6 +24,16 @@ public final class FishingHookRenderStateMixin implements FishingHookRenderState
     @Override
     public boolean agoniaFishingQol$isOwnHook() {
         return this.agoniaFishingQol$ownHook;
+    }
+
+    @Override
+    public void agoniaFishingQol$setApproaching(boolean approaching) {
+        this.agoniaFishingQol$approaching = approaching;
+    }
+
+    @Override
+    public boolean agoniaFishingQol$isApproaching() {
+        return this.agoniaFishingQol$approaching;
     }
 
     @Override

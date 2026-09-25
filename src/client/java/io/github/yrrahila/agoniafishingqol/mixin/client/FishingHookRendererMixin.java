@@ -15,7 +15,6 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.projectile.FishingHook;
-import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -26,9 +25,10 @@ public abstract class FishingHookRendererMixin {
     private static final RenderType AGONIA_FISHING_QOL_RENDER_TYPE = RenderTypes.entityCutoutCull(
         Identifier.withDefaultNamespace("textures/entity/fishing/fishing_hook.png")
     );
-    private static final int WAITING_LINE_COLOR = 0xFFFF3030;
-    private static final int BITE_LINE_COLOR = 0xFF30FF60;
-    private static final int BITE_BOBBER_COLOR = 0xFFFFC400;
+    private static final int WAITING_COLOR = 0xFFFF3030;
+    private static final int APPROACHING_COLOR = 0xFFFFD43B;
+    private static final int BITE_COLOR = 0xFF35FF63;
+    private static final float LINE_WIDTH_MULTIPLIER = 1.35F;
 
     @Inject(
         method = "extractRenderState(Lnet/minecraft/world/entity/projectile/FishingHook;Lnet/minecraft/client/renderer/entity/state/FishingHookRenderState;F)V",
@@ -42,24 +42,11 @@ public abstract class FishingHookRendererMixin {
     ) {
         FishingHookRenderStateAccess extension = (FishingHookRenderStateAccess)state;
         boolean ownHook = FishingVisualState.isOwnHook(entity);
+        boolean approaching = ownHook && FishingVisualState.isApproaching();
         boolean biting = ownHook && FishingVisualState.isBiting();
         extension.agoniaFishingQol$setOwnHook(ownHook);
+        extension.agoniaFishingQol$setApproaching(approaching);
         extension.agoniaFishingQol$setBiting(biting);
-
-        Vec3 frozenPosition = ownHook && !biting ? FishingVisualState.frozenPosition() : null;
-        if (frozenPosition != null) {
-            double actualX = state.x;
-            double actualY = state.y;
-            double actualZ = state.z;
-            state.lineOriginOffset = state.lineOriginOffset.add(
-                actualX - frozenPosition.x,
-                actualY - frozenPosition.y,
-                actualZ - frozenPosition.z
-            );
-            state.x = frozenPosition.x;
-            state.y = frozenPosition.y;
-            state.z = frozenPosition.z;
-        }
     }
 
     @Inject(
@@ -79,9 +66,9 @@ public abstract class FishingHookRendererMixin {
             return;
         }
 
+        boolean approaching = extension.agoniaFishingQol$isApproaching();
         boolean biting = extension.agoniaFishingQol$isBiting();
-        int bobberColor = biting ? BITE_BOBBER_COLOR : 0xFFFFFFFF;
-        int lineColor = biting ? BITE_LINE_COLOR : WAITING_LINE_COLOR;
+        int phaseColor = biting ? BITE_COLOR : approaching ? APPROACHING_COLOR : WAITING_COLOR;
         float bobberScale = biting ? 1.0F : 0.5F;
 
         poseStack.pushPose();
@@ -89,23 +76,24 @@ public abstract class FishingHookRendererMixin {
         poseStack.scale(bobberScale, bobberScale, bobberScale);
         poseStack.mulPose(camera.orientation);
         submitNodeCollector.submitCustomGeometry(poseStack, AGONIA_FISHING_QOL_RENDER_TYPE, (pose, buffer) -> {
-            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 0.0F, 0, 0, 1, bobberColor);
-            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 1.0F, 0, 1, 1, bobberColor);
-            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 1.0F, 1, 1, 0, bobberColor);
-            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 0.0F, 1, 0, 0, bobberColor);
+            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 0.0F, 0, 0, 1, phaseColor);
+            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 1.0F, 0, 1, 1, phaseColor);
+            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 1.0F, 1, 1, 0, phaseColor);
+            agoniaFishingQol$bobberVertex(buffer, pose, state.lightCoords, 0.0F, 1, 0, 0, phaseColor);
         });
         poseStack.popPose();
 
         float xa = (float)state.lineOriginOffset.x;
         float ya = (float)state.lineOriginOffset.y;
         float za = (float)state.lineOriginOffset.z;
-        float width = Minecraft.getInstance().gameRenderer.gameRenderState().windowRenderState.appropriateLineWidth;
+        float width = Minecraft.getInstance().gameRenderer.gameRenderState().windowRenderState.appropriateLineWidth
+            * LINE_WIDTH_MULTIPLIER;
         submitNodeCollector.submitCustomGeometry(poseStack, RenderTypes.lines(), (pose, buffer) -> {
             for (int i = 0; i < 16; i++) {
                 float a0 = (float)i / 16.0F;
                 float a1 = (float)(i + 1) / 16.0F;
-                agoniaFishingQol$stringVertex(xa, ya, za, buffer, pose, a0, a1, width, lineColor);
-                agoniaFishingQol$stringVertex(xa, ya, za, buffer, pose, a1, a0, width, lineColor);
+                agoniaFishingQol$stringVertex(xa, ya, za, buffer, pose, a0, a1, width, phaseColor);
+                agoniaFishingQol$stringVertex(xa, ya, za, buffer, pose, a1, a0, width, phaseColor);
             }
         });
         poseStack.popPose();

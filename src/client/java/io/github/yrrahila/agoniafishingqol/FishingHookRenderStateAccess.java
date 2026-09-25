@@ -6,6 +6,10 @@ public interface FishingHookRenderStateAccess {
 
     boolean agoniaFishingQol$isOwnHook();
 
+    void agoniaFishingQol$setApproaching(boolean approaching);
+
+    boolean agoniaFishingQol$isApproaching();
+
     void agoniaFishingQol$setBiting(boolean biting);
 
     boolean agoniaFishingQol$isBiting();
