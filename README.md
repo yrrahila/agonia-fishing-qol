@@ -12,8 +12,8 @@ A strictly client-side Fabric mod for Minecraft 26.2 that makes manual fishing e
 ## Requirements
 
 - Minecraft Java Edition 26.2
-- Fabric Loader 0.19.5 or newer
-- Fabric API 0.161.0+26.2 or newer compatible 26.2 build
+- Fabric Loader 0.19.3 or newer
+- Fabric API 0.156.0+26.2 or newer compatible 26.2 build
 - Java 25
 
 ## Build
