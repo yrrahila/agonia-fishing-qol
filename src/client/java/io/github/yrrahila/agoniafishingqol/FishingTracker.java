@@ -151,31 +151,46 @@ public final class FishingTracker {
         lastBiting = biting;
     }
 
-    /** Returns true only for a fishing particle safely attributable to the local player's hook. */
+    /** Cancels vanilla fishing wakes and recreates only those safely attributable to the local hook. */
     public boolean handleParticlePacket(Minecraft client, ClientboundLevelParticlesPacket packet) {
-        if (client.player == null || client.level == null) {
-            return false;
-        }
-
-        FishingHook ownHook = client.player.fishing;
-        if (ownHook == null || ownHook.isRemoved() || ownHook.getPlayerOwner() != client.player) {
-            return false;
-        }
-
-        if (isApproachTrailPacket(packet) && approachTrailBelongsToOwnHook(client, ownHook, packet)) {
-            approachingUntilTick = client.level.getGameTime() + APPROACH_STATE_GRACE_TICKS;
-            renderColoredApproachTrail(client, packet);
+        if (isApproachTrailPacket(packet)) {
+            if (client.player != null && client.level != null) {
+                FishingHook ownHook = client.player.fishing;
+                if (ownHook != null
+                    && !ownHook.isRemoved()
+                    && ownHook.getPlayerOwner() == client.player
+                    && approachTrailBelongsToOwnHook(client, ownHook, packet)) {
+                    approachingUntilTick = client.level.getGameTime() + APPROACH_STATE_GRACE_TICKS;
+                    renderColoredApproachTrail(client, packet);
+                }
+            }
+            // Every vanilla fishing wake is hidden. A replacement is created only when this
+            // packet can be attributed unambiguously to the local player's actual hook.
             return true;
         }
 
         if (isCloseBiteFishingPacket(packet)) {
-            if (closeFishingEffectBelongsToOwnHook(client, ownHook, packet)) {
-                renderColoredBiteEffect(client, packet);
-                return true;
+            if (client.player != null && client.level != null) {
+                FishingHook ownHook = client.player.fishing;
+                if (ownHook != null
+                    && !ownHook.isRemoved()
+                    && ownHook.getPlayerOwner() == client.player
+                    && closeFishingEffectBelongsToOwnHook(client, ownHook, packet)) {
+                    renderColoredBiteEffect(client, packet);
+                }
             }
+            return true;
         }
 
-        return isIdleFishingSplash(packet) && idleSplashBelongsToOwnHook(client, ownHook, packet);
+        if (client.player == null || client.level == null) {
+            return false;
+        }
+        FishingHook ownHook = client.player.fishing;
+        return ownHook != null
+            && !ownHook.isRemoved()
+            && ownHook.getPlayerOwner() == client.player
+            && isIdleFishingSplash(packet)
+            && idleSplashBelongsToOwnHook(client, ownHook, packet);
     }
 
     public FishingSnapshot snapshot() {
@@ -377,6 +392,7 @@ public final class FishingTracker {
         Particle particle = client.particleEngine.createParticle(ParticleTypes.FISHING, x, y, z, xa, ya, za);
         if (particle instanceof SingleQuadParticle quadParticle) {
             quadParticle.setColor(red, green, blue);
+            ((FishingTrailParticleAccess)quadParticle).agoniaFishingQol$setFullBright(true);
             activeTrailParticles.add(quadParticle);
         }
         if (particle != null) {

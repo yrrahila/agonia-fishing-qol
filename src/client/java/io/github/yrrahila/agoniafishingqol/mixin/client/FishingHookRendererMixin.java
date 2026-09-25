@@ -21,8 +21,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(FishingHookRenderer.class)
 public abstract class FishingHookRendererMixin {
     private static final int WAITING_COLOR = 0xFFFF3030;
-    private static final int APPROACHING_COLOR = 0xFFFFD43B;
-    private static final int BITE_COLOR = 0xFF35FF63;
+    private static final int APPROACHING_COLOR = 0xFFFFFF00;
+    private static final int BITE_COLOR = 0xFF00FF00;
+    private static final float NORMAL_BOBBER_SCALE = 0.58F;
+    private static final float BITE_BOBBER_SCALE = 1.35F;
     private static final float LINE_WIDTH_MULTIPLIER = 2.0F;
 
     @Inject(
@@ -83,7 +85,7 @@ public abstract class FishingHookRendererMixin {
         boolean approaching = extension.agoniaFishingQol$isApproaching();
         boolean biting = extension.agoniaFishingQol$isBiting();
         int phaseColor = biting ? BITE_COLOR : approaching ? APPROACHING_COLOR : WAITING_COLOR;
-        float bobberScale = biting ? 1.35F : 0.5F;
+        float bobberScale = biting ? BITE_BOBBER_SCALE : NORMAL_BOBBER_SCALE;
 
         poseStack.pushPose();
         poseStack.pushPose();

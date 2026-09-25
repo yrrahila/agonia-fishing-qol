@@ -32,14 +32,15 @@ The distributable JAR is written to `build/libs/`.
 - An optional Mod Menu integration that opens a small vanilla-style Bite sound screen with six persistent built-in alert presets and a short preview.
 - One action-bar warning when a held fishing rod reaches 10 durability or less.
 - A large yellow `INCOMING...` alert and short note-block sound when the local hook's real server-sent fish trail begins.
-- A larger green `BITE!` alert, a 35% larger bite-state bobber, and the selected alert preset repeated at a controlled interval for the full bite-ready phase.
+- A larger green `BITE!` alert, a subtly enlarged normal bobber, a clearly larger bite-state bobber, and the selected alert preset repeated at a controlled interval for the full bite-ready phase.
 - A compact middle-right HUD, visible only while holding a fishing rod, with a bold `Agonia Fishing QoL` title and separate `Cast`, `Estimated`, and `Durability` rows.
 - A static numerical bite-time range based on vanilla's random wait bounds, Lure, rain, and sky exposure. It changes to `Incoming` only for the verified approach trail and `Ready` only for the synchronized bite state.
 - A client-only glow and matching solid red (waiting), yellow (approaching), or green (bite-ready) bobber and clearly thicker line.
+- An item-only first-person transform renders fishing rods at 82% scale in either hand without changing GUI item models.
 - A render-only stable waiting anchor that blends in and out over eight ticks, including between-frame interpolation, while fishing logic continues to use the real entity position.
-- The verified local-player `FISHING` approach wake is replaced client-side with a managed yellow trail. Every still-visible segment is recolored green as soon as the bite state begins, while other players' fishing particles are left unchanged.
+- Vanilla fishing wakes are hidden client-side and replaced only for the verified local-player hook with a full-bright yellow trail. Every still-visible segment is recolored full-bright green as soon as the bite state begins.
 - All ordinary `BUBBLE` particles are hidden client-side, and local `SPLASH`, `UNDERWATER`, and `BUBBLE_POP` particles within four blocks of the player's bobber are removed. Bubble-column mechanics and other distinct world particles are unchanged.
-- Uniform, nearly transparent still/flow water textures use alpha 16 to preserve the smooth clear-water replacement while keeping underwater bobber colors highly visible, without shader, framebuffer, fog, physics, movement, or server-state changes.
+- Uniform, transparent still/flow water textures use alpha 32 to preserve the smooth clear-water replacement while keeping underwater bobber colors highly visible, without shader, framebuffer, fog, physics, movement, or server-state changes.
 
 ## Multiplayer safety
 

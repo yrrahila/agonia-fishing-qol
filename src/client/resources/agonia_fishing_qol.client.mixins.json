@@ -7,6 +7,8 @@
     "FishingHookAccessor",
     "FishingHookRendererMixin",
     "FishingHookRenderStateMixin",
+    "FishingTrailParticleMixin",
+    "ItemInHandRendererMixin",
     "ParticleEngineMixin"
   ],
   "injectors": {
