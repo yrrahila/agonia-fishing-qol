@@ -8,6 +8,7 @@
     "FishingHookRendererMixin",
     "FishingHookRenderStateMixin",
     "ItemInHandRendererMixin",
+    "ItemStackLayerRenderStateMixin",
     "ParticleEngineMixin"
   ],
   "injectors": {

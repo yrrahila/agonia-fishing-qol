@@ -3,9 +3,10 @@ package io.github.yrrahila.agoniafishingqol;
 import io.github.yrrahila.agoniafishingqol.FishingSnapshot.BobberStatus;
 import io.github.yrrahila.agoniafishingqol.mixin.client.FishingHookAccessor;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -39,7 +40,7 @@ public final class FishingTracker {
 
     private FishingHook activeHook;
     private long cycleStartTick = -1L;
-    private long approachingUntilTick = Long.MIN_VALUE;
+    private volatile long approachingUntilTick = Long.MIN_VALUE;
     private boolean lastApproaching;
     private boolean lastBiting;
     private boolean durabilityWarningShown;
@@ -51,6 +52,7 @@ public final class FishingTracker {
     private @Nullable Vec3 visualAnchor;
     private @Nullable SimpleSoundInstance activeApproachSound;
     private final List<TrackedTrailSegment> activeTrailSegments = new ArrayList<>();
+    private final Queue<PendingTrailSegment> pendingTrailSegments = new ConcurrentLinkedQueue<>();
     private FishingSnapshot snapshot = FishingSnapshot.NOT_CAST;
 
     public void tick(Minecraft client) {
@@ -81,6 +83,7 @@ public final class FishingTracker {
         long gameTime = client.level.getGameTime();
         boolean inWater = updateWaterContact(client);
         boolean biting = ((FishingHookAccessor)activeHook).agoniaFishingQol$isBiting();
+        drainPendingTrail(client);
 
         if (lastBiting && !biting) {
             resetVisualAnchor();
@@ -154,7 +157,7 @@ public final class FishingTracker {
                     && ownHook.getPlayerOwner() == client.player
                     && approachTrailBelongsToOwnHook(client, ownHook, packet)) {
                     approachingUntilTick = client.level.getGameTime() + APPROACH_STATE_GRACE_TICKS;
-                    addApproachTrail(packet);
+                    addApproachTrail(client, ownHook, packet);
                 }
             }
             // Every vanilla fishing wake is hidden. A replacement is created only when this
@@ -169,7 +172,7 @@ public final class FishingTracker {
                     && !ownHook.isRemoved()
                     && ownHook.getPlayerOwner() == client.player
                     && closeFishingEffectBelongsToOwnHook(client, ownHook, packet)) {
-                    addBiteEffect(packet);
+                    addBiteEffect(client, ownHook, packet);
                 }
             }
             return true;
@@ -329,7 +332,11 @@ public final class FishingTracker {
         return Mth.square(hook.getX() - x) + Mth.square(hook.getZ() - z);
     }
 
-    private void addApproachTrail(ClientboundLevelParticlesPacket packet) {
+    private void addApproachTrail(
+        Minecraft client,
+        FishingHook ownHook,
+        ClientboundLevelParticlesPacket packet
+    ) {
         double xa = packet.getMaxSpeed() * packet.getXDist();
         double ya = packet.getMaxSpeed() * packet.getYDist();
         double za = packet.getMaxSpeed() * packet.getZDist();
@@ -343,18 +350,26 @@ public final class FishingTracker {
 
         for (double[] offset : offsets) {
             addTrailSegment(
+                client,
+                ownHook,
                 packet.getX() + offset[0], packet.getY() + offset[1], packet.getZ() + offset[2],
                 xa, ya, za
             );
         }
     }
 
-    private void addBiteEffect(ClientboundLevelParticlesPacket packet) {
+    private void addBiteEffect(
+        Minecraft client,
+        FishingHook ownHook,
+        ClientboundLevelParticlesPacket packet
+    ) {
         int count = Math.min(Math.max(packet.getCount(), 4), 12);
         for (int i = 0; i < count; i++) {
             double angle = Math.PI * 2.0 * i / count;
             double radius = 0.08 + 0.02 * (i % 3);
             addTrailSegment(
+                client,
+                ownHook,
                 packet.getX() + Math.cos(angle) * radius,
                 packet.getY() + 0.02 * (i % 2),
                 packet.getZ() + Math.sin(angle) * radius,
@@ -366,6 +381,8 @@ public final class FishingTracker {
     }
 
     private void addTrailSegment(
+        Minecraft client,
+        FishingHook ownHook,
         double x,
         double y,
         double z,
@@ -373,26 +390,51 @@ public final class FishingTracker {
         double ya,
         double za
     ) {
-        activeTrailSegments.add(new TrackedTrailSegment(new Vec3(x, y, z), new Vec3(xa, ya, za)));
+        if (client.level == null) {
+            return;
+        }
+        pendingTrailSegments.add(new PendingTrailSegment(
+            ownHook.getId(),
+            System.identityHashCode(client.level),
+            new Vec3(x, y, z),
+            new Vec3(xa, ya, za)
+        ));
     }
 
     private void tickActiveTrail(boolean approaching, boolean biting) {
         if (!approaching && !biting) {
-            removeActiveTrail();
+            clearActiveTrail();
             return;
         }
 
-        Iterator<TrackedTrailSegment> iterator = activeTrailSegments.iterator();
-        while (iterator.hasNext()) {
-            TrackedTrailSegment segment = iterator.next();
-            if (!segment.tick()) {
-                iterator.remove();
+        List<TrackedTrailSegment> survivingSegments = new ArrayList<>(activeTrailSegments.size());
+        for (TrackedTrailSegment segment : activeTrailSegments) {
+            if (segment.tick()) {
+                survivingSegments.add(segment);
+            }
+        }
+        activeTrailSegments.clear();
+        activeTrailSegments.addAll(survivingSegments);
+    }
+
+    private void drainPendingTrail(Minecraft client) {
+        int activeHookId = activeHook == null ? -1 : activeHook.getId();
+        int activeLevelIdentity = client.level == null ? 0 : System.identityHashCode(client.level);
+        PendingTrailSegment pending;
+        while ((pending = pendingTrailSegments.poll()) != null) {
+            if (pending.hookId() == activeHookId && pending.levelIdentity() == activeLevelIdentity) {
+                activeTrailSegments.add(new TrackedTrailSegment(pending.position(), pending.velocity()));
             }
         }
     }
 
-    private void removeActiveTrail() {
+    private void clearActiveTrail() {
         activeTrailSegments.clear();
+    }
+
+    private void clearAllTrail() {
+        clearActiveTrail();
+        pendingTrailSegments.clear();
     }
 
     private List<FishingVisualState.TrailSegment> trailSnapshot() {
@@ -531,8 +573,9 @@ public final class FishingTracker {
         clearPreviousHighlight();
         stopApproachSound(client);
         AgoniaFishingQolClient.biteSoundController().stopBite(client);
-        removeActiveTrail();
+        clearAllTrail();
         FishingVisualState.clear();
+        FirstPersonRodVisuals.clear();
         activeHook = null;
         cycleStartTick = -1L;
         approachingUntilTick = Long.MIN_VALUE;
@@ -566,6 +609,9 @@ public final class FishingTracker {
     }
 
     private record RodDurability(int remaining, int maximum) {
+    }
+
+    private record PendingTrailSegment(int hookId, int levelIdentity, Vec3 position, Vec3 velocity) {
     }
 
     private static final class TrackedTrailSegment {

@@ -3,12 +3,9 @@ package io.github.yrrahila.agoniafishingqol;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
-import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
 
 /** Shared first-person rod transform and its most recently rendered model-tip position. */
@@ -16,7 +13,11 @@ public final class FirstPersonRodVisuals {
     public static final float SCALE = 0.78F;
     public static final float UPWARD_OFFSET = 0.055F;
     public static final float CAMERA_OFFSET = -0.38F;
-    private static final long CAPTURE_MAX_AGE_NANOS = 250_000_000L;
+    // The fishing-rod texture reaches its upper tip near this stable model-space point.
+    // Capturing one fixed point avoids snapping between bounding-box corners as the hand moves.
+    private static final float MODEL_TIP_X = 0.88F;
+    private static final float MODEL_TIP_Y = 0.96F;
+    private static final float MODEL_TIP_Z = 0.53125F;
 
     private static boolean captureActive;
     private static @Nullable TipCapture latestTip;
@@ -41,56 +42,40 @@ public final class FirstPersonRodVisuals {
     }
 
     /**
-     * Finds the highest projected extent after Minecraft's real item display transform has
-     * been applied. The surrounding pose already contains the hand animation and this mod's
-     * scale/translation, so the captured point remains attached when those transforms change.
+     * Captures one stable point at the rod's texture tip after Minecraft's real item display
+     * transform. The pose contains the interpolated hand animation plus this mod's transform.
      */
-    public static void captureRenderedTip(ItemStackRenderState renderState, PoseStack poseStack) {
+    public static void captureRenderedTip(PoseStack.Pose renderedPose) {
         Minecraft client = Minecraft.getInstance();
         Camera camera = client.gameRenderer.mainCamera();
-        Matrix4f renderedPose = new Matrix4f(poseStack.last().pose());
         Quaternionf worldToCamera = camera.rotation().conjugate(new Quaternionf());
-        TipCandidate[] best = {null};
-
-        renderState.visitExtents(extent -> {
-            Vector3f cameraLocal = agoniaFishingQol$toCameraLocal(extent, renderedPose, worldToCamera);
-            float depth = Math.max(0.05F, -cameraLocal.z);
-            float projectedHeight = cameraLocal.y / depth;
-            if (best[0] == null || projectedHeight > best[0].projectedHeight()) {
-                best[0] = new TipCandidate(cameraLocal, projectedHeight);
-            }
-        });
-
-        if (best[0] != null) {
-            Vector3f point = best[0].cameraLocal();
-            latestTip = new TipCapture(new Vec3(point.x, point.y, point.z), System.nanoTime());
-        }
+        Vector3f cameraLocal = new Vector3f(MODEL_TIP_X, MODEL_TIP_Y, MODEL_TIP_Z)
+            .mulPosition(renderedPose.pose())
+            .rotate(worldToCamera);
+        int levelIdentity = client.level == null ? 0 : System.identityHashCode(client.level);
+        latestTip = new TipCapture(new Vec3(cameraLocal.x, cameraLocal.y, cameraLocal.z), levelIdentity);
     }
 
     public static @Nullable Vec3 currentWorldTip() {
+        Minecraft client = Minecraft.getInstance();
         TipCapture capture = latestTip;
-        if (capture == null || System.nanoTime() - capture.capturedAtNanos() > CAPTURE_MAX_AGE_NANOS) {
+        if (capture == null
+            || client.level == null
+            || capture.levelIdentity() != System.identityHashCode(client.level)) {
             return null;
         }
 
-        Camera camera = Minecraft.getInstance().gameRenderer.mainCamera();
+        Camera camera = client.gameRenderer.mainCamera();
         Vec3 cameraLocal = capture.cameraLocal();
         Vector3f worldOffset = new Vector3f((float)cameraLocal.x, (float)cameraLocal.y, (float)cameraLocal.z)
             .rotate(camera.rotation());
         return camera.position().add(worldOffset.x, worldOffset.y, worldOffset.z);
     }
 
-    private static Vector3f agoniaFishingQol$toCameraLocal(
-        Vector3fc modelExtent,
-        Matrix4f renderedPose,
-        Quaternionf worldToCamera
-    ) {
-        return new Vector3f(modelExtent).mulPosition(renderedPose).rotate(worldToCamera);
+    public static void clear() {
+        latestTip = null;
     }
 
-    private record TipCandidate(Vector3f cameraLocal, float projectedHeight) {
-    }
-
-    private record TipCapture(Vec3 cameraLocal, long capturedAtNanos) {
+    private record TipCapture(Vec3 cameraLocal, int levelIdentity) {
     }
 }

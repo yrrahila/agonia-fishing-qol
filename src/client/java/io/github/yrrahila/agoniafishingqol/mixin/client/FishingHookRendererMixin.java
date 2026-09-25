@@ -21,9 +21,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(FishingHookRenderer.class)
 public abstract class FishingHookRendererMixin {
-    private static final int WAITING_COLOR = 0xFFFF3030;
-    private static final int APPROACHING_COLOR = 0xFFFFFF00;
-    private static final int BITE_COLOR = 0xFF00FF00;
+    private static final int WAITING_LINE_COLOR = 0xFFFF3030;
+    private static final int APPROACHING_LINE_COLOR = 0xFFFFFF00;
+    private static final int BITE_LINE_COLOR = 0xFF00FF00;
+    private static final int WAITING_BOBBER_COLOR = 0xFFD62828;
+    private static final int APPROACHING_BOBBER_COLOR = 0xFFE6D000;
+    private static final int BITE_BOBBER_COLOR = 0xFF00D628;
     private static final float NORMAL_BOBBER_SCALE = 0.58F;
     private static final float BITE_BOBBER_SCALE = 1.35F;
     private static final float LINE_WIDTH_MULTIPLIER = 2.0F;
@@ -98,7 +101,10 @@ public abstract class FishingHookRendererMixin {
 
         boolean approaching = extension.agoniaFishingQol$isApproaching();
         boolean biting = extension.agoniaFishingQol$isBiting();
-        int phaseColor = biting ? BITE_COLOR : approaching ? APPROACHING_COLOR : WAITING_COLOR;
+        int lineColor = biting ? BITE_LINE_COLOR : approaching ? APPROACHING_LINE_COLOR : WAITING_LINE_COLOR;
+        int bobberColor = biting ? BITE_BOBBER_COLOR : approaching
+            ? APPROACHING_BOBBER_COLOR
+            : WAITING_BOBBER_COLOR;
         float bobberScale = biting ? BITE_BOBBER_SCALE : NORMAL_BOBBER_SCALE;
 
         poseStack.pushPose();
@@ -107,8 +113,8 @@ public abstract class FishingHookRendererMixin {
         submitNodeCollector.submitCustomGeometry(poseStack, RenderTypes.debugQuads(), (pose, buffer) -> {
             // A compact two-part 3D float. The color-only render type is unlit and keeps all
             // transformations local to this custom geometry submission.
-            agoniaFishingQol$cuboid(buffer, pose, -0.22F, -0.38F, -0.22F, 0.22F, 0.06F, 0.22F, phaseColor);
-            agoniaFishingQol$cuboid(buffer, pose, -0.07F, 0.06F, -0.07F, 0.07F, 0.34F, 0.07F, phaseColor);
+            agoniaFishingQol$cuboid(buffer, pose, -0.22F, -0.38F, -0.22F, 0.22F, 0.06F, 0.22F, bobberColor);
+            agoniaFishingQol$cuboid(buffer, pose, -0.07F, 0.06F, -0.07F, 0.07F, 0.34F, 0.07F, bobberColor);
         });
         poseStack.popPose();
 
@@ -127,7 +133,7 @@ public abstract class FishingHookRendererMixin {
                         x + TRAIL_HALF_SIZE,
                         y + TRAIL_HALF_SIZE * 0.35F,
                         z + TRAIL_HALF_SIZE,
-                        phaseColor
+                        lineColor
                     );
                 }
             });
@@ -142,8 +148,8 @@ public abstract class FishingHookRendererMixin {
             for (int i = 0; i < 16; i++) {
                 float a0 = (float)i / 16.0F;
                 float a1 = (float)(i + 1) / 16.0F;
-                agoniaFishingQol$stringVertex(xa, ya, za, buffer, pose, a0, a1, width, phaseColor);
-                agoniaFishingQol$stringVertex(xa, ya, za, buffer, pose, a1, a0, width, phaseColor);
+                agoniaFishingQol$stringVertex(xa, ya, za, buffer, pose, a0, a1, width, lineColor);
+                agoniaFishingQol$stringVertex(xa, ya, za, buffer, pose, a1, a0, width, lineColor);
             }
         });
         poseStack.popPose();
